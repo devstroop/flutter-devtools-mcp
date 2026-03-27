@@ -1,0 +1,177 @@
+import 'package:logging/logging.dart';
+
+import 'connection.dart';
+
+final _log = Logger('Selectors');
+
+/// Selector tier, in order of preference.
+enum SelectorTier {
+  semantics, // semantics:label
+  key,       // key:value_key
+  text,      // text:content
+  index,     // index:Type:N
+}
+
+/// A parsed selector.
+class Selector {
+  final SelectorTier tier;
+  final String value;
+  final int? index; // only for SelectorTier.index
+
+  Selector({required this.tier, required this.value, this.index});
+
+  /// Parse a selector string.
+  ///
+  /// Formats:
+  /// - `semantics:Submit`
+  /// - `key:submit_btn`
+  /// - `text:Submit`
+  /// - `index:ElevatedButton:3`
+  factory Selector.parse(String raw) {
+    final colonIdx = raw.indexOf(':');
+    if (colonIdx == -1) {
+      // No prefix — treat as text search
+      return Selector(tier: SelectorTier.text, value: raw);
+    }
+    final prefix = raw.substring(0, colonIdx).toLowerCase();
+    final rest = raw.substring(colonIdx + 1);
+
+    switch (prefix) {
+      case 'semantics':
+        return Selector(tier: SelectorTier.semantics, value: rest);
+      case 'key':
+        return Selector(tier: SelectorTier.key, value: rest);
+      case 'text':
+        return Selector(tier: SelectorTier.text, value: rest);
+      case 'index':
+        // index:Type:N
+        final parts = rest.split(':');
+        if (parts.length != 2) {
+          throw FormatException('Index selector must be index:Type:N, got: $raw');
+        }
+        return Selector(
+          tier: SelectorTier.index,
+          value: parts[0],
+          index: int.parse(parts[1]),
+        );
+      default:
+        // Unknown prefix — treat entire string as text
+        return Selector(tier: SelectorTier.text, value: raw);
+    }
+  }
+
+  @override
+  String toString() => '${tier.name}:$value${index != null ? ':$index' : ''}';
+}
+
+/// Result of resolving a selector against the widget tree.
+class ResolvedNode {
+  final String id;       // Inspector valueId
+  final String type;     // Widget type name
+  final String? label;   // Semantics label
+  final String? key;     // Key value
+  final String? text;    // Text content
+  final SelectorTier matchedVia;
+
+  ResolvedNode({
+    required this.id,
+    required this.type,
+    this.label,
+    this.key,
+    this.text,
+    required this.matchedVia,
+  });
+
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'type': type,
+    if (label != null) 'label': label,
+    if (key != null) 'key': key,
+    if (text != null) 'text': text,
+    'matchedVia': matchedVia.name,
+  };
+}
+
+/// Selector resolution error.
+class SelectorError implements Exception {
+  final String message;
+  final int matchCount;
+  final List<ResolvedNode> matches;
+
+  SelectorError(this.message, {this.matchCount = 0, this.matches = const []});
+
+  @override
+  String toString() => 'SelectorError: $message (matches: $matchCount)';
+}
+
+/// Resolve a selector against the current widget tree.
+///
+/// Returns exactly one [ResolvedNode] or throws [SelectorError].
+///
+/// Rules:
+/// - Exact match > partial match
+/// - Visible nodes only (by default)
+/// - Ambiguous matches → explicit error with match details
+Future<ResolvedNode> resolveSelector(
+  FlutterConnection connection,
+  Selector selector, {
+  bool visibleOnly = true,
+}) async {
+  _log.fine('Resolving: $selector');
+
+  // 1. Fetch fresh summary tree
+  final treeResponse = await connection.callInspector(
+    'getRootWidgetSummaryTree',
+    {'groupName': 'mcp-selector'},
+  );
+  final tree = treeResponse.json!;
+
+  // 2. Walk tree and collect matches
+  final matches = <ResolvedNode>[];
+  _walkTree(tree, selector, matches);
+
+  // 3. Apply visibility filter
+  // TODO: filter by render object visibility when visibleOnly is true
+
+  // 4. Resolve
+  if (matches.isEmpty) {
+    throw SelectorError('No node matches selector: $selector');
+  }
+  if (matches.length > 1 && selector.tier != SelectorTier.index) {
+    throw SelectorError(
+      'Ambiguous: ${matches.length} nodes match "$selector". '
+      'Use a more specific selector or provide an index.',
+      matchCount: matches.length,
+      matches: matches,
+    );
+  }
+
+  final result = matches.first;
+  if (result.matchedVia != SelectorTier.semantics) {
+    _log.warning(
+      'Selector "$selector" resolved via ${result.matchedVia.name} '
+      '(not semantics). Consider adding a Semantics label.',
+    );
+  }
+  return result;
+}
+
+void _walkTree(
+  Map<String, Object?> node,
+  Selector selector,
+  List<ResolvedNode> matches,
+) {
+  // TODO: implement tree walk + matching logic per selector tier
+  // Extract: description (type), valueId, properties (label, key, text)
+  // Match against selector tier + value
+  // Recurse into children
+
+  final children = node['children'] as List<Object?>?;
+  if (children != null) {
+    for (final child in children) {
+      if (child is Map<String, Object?>) {
+        _walkTree(child, selector, matches);
+      }
+    }
+  }
+}
