@@ -129,6 +129,8 @@ class FlutterConnection {
   static bool _isLocalhost(String url) {
     final uri = Uri.tryParse(url);
     if (uri == null) return false;
-    return uri.host == '127.0.0.1' || uri.host == 'localhost';
+    if (uri.scheme != 'ws' && uri.scheme != 'wss') return false;
+    final host = uri.host;
+    return host == '127.0.0.1' || host == 'localhost' || host == '::1';
   }
 }

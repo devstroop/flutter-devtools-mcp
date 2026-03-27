@@ -54,6 +54,7 @@ Future<NodeBounds> getBounds(FlutterConnection connection, ResolvedNode node) as
     final value = result.valueAsString;
     if (value != null && !value.startsWith('err:')) {
       final parts = value.split(',').map(double.parse).toList();
+      if (parts.length != 4) throw FormatException('Expected 4 coords, got ${parts.length}');
       return NodeBounds(x: parts[0], y: parts[1], width: parts[2], height: parts[3]);
     }
     _log.fine('evaluate bounds returned: $value');
@@ -210,7 +211,7 @@ Future<ActionabilityResult> checkActionability(
       connection.rootLibraryId,
       'WidgetsBinding.instance.renderViews.first.size.toString()',
     );
-    final screenStr = (screenResult as dynamic).valueAsString as String?;
+    final screenStr = (screenResult is InstanceRef) ? screenResult.valueAsString : null;
     if (screenStr != null) {
       final sizeMatch = RegExp(r'Size\(([\d.]+),\s*([\d.]+)\)').firstMatch(screenStr);
       if (sizeMatch != null) {

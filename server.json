@@ -11,14 +11,83 @@
     }
   },
   "tools": [
-    "snapshot",
-    "inspect",
-    "tap",
-    "type_text",
-    "scroll",
-    "screenshot",
-    "hot_reload",
-    "evaluate",
-    "press_back"
+    {
+      "name": "snapshot",
+      "description": "Get the current widget tree as LLM-friendly JSON.",
+      "inputSchema": { "type": "object", "properties": {} }
+    },
+    {
+      "name": "inspect",
+      "description": "Get detailed properties of a specific widget node.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "nodeId": { "type": "string", "description": "Node ID from snapshot" }
+        },
+        "required": ["nodeId"]
+      }
+    },
+    {
+      "name": "tap",
+      "description": "Tap a widget. Selector formats: semantics:Label, key:value_key, text:Content, index:Type:N",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "selector": { "type": "string", "description": "Widget selector" }
+        },
+        "required": ["selector"]
+      }
+    },
+    {
+      "name": "type_text",
+      "description": "Focus a text field by selector and enter text.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "selector": { "type": "string", "description": "Text field selector" },
+          "text": { "type": "string", "description": "Text to enter" }
+        },
+        "required": ["selector", "text"]
+      }
+    },
+    {
+      "name": "scroll",
+      "description": "Scroll a scrollable widget in a direction.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "selector": { "type": "string", "description": "Scrollable widget selector" },
+          "direction": { "type": "string", "enum": ["up", "down", "left", "right"], "description": "Scroll direction" },
+          "amount": { "type": "number", "description": "Scroll amount in pixels (default: 300)" }
+        },
+        "required": ["selector", "direction"]
+      }
+    },
+    {
+      "name": "screenshot",
+      "description": "Capture the current screen as PNG.",
+      "inputSchema": { "type": "object", "properties": {} }
+    },
+    {
+      "name": "hot_reload",
+      "description": "Trigger hot reload on the connected Flutter app.",
+      "inputSchema": { "type": "object", "properties": {} }
+    },
+    {
+      "name": "evaluate",
+      "description": "Evaluate a Dart expression in the running app.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "expression": { "type": "string", "description": "Dart expression" }
+        },
+        "required": ["expression"]
+      }
+    },
+    {
+      "name": "press_back",
+      "description": "Press the system back button / pop the top route.",
+      "inputSchema": { "type": "object", "properties": {} }
+    }
   ]
 }
