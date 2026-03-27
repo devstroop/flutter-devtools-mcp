@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import '../connection.dart';
 import '../trace.dart';
 
