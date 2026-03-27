@@ -8,6 +8,9 @@ bin/debug_*.dart
 bin/probe_vm.dart
 debug_tree.json
 
+# Compiled binaries (generated artifacts, platform-specific)
+bin/flutter_devtools_mcp_server
+
 # IDE
 .idea/
 *.iml
