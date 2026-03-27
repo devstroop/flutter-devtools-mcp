@@ -58,12 +58,15 @@ Rules:
 
 ```bash
 flutter run --debug
-# Note the VM Service URL: ws://127.0.0.1:XXXXX/YYYY=/ws
 ```
 
 ### 2. Run the MCP server
 
 ```bash
+# URL auto-discovered via mDNS — no config needed
+dart run bin/server.dart
+
+# Or specify the URL explicitly
 dart run bin/server.dart --vm-service-url ws://127.0.0.1:XXXXX/YYYY=/ws
 ```
 
@@ -73,7 +76,20 @@ dart run bin/server.dart --vm-service-url ws://127.0.0.1:XXXXX/YYYY=/ws
 {
   "mcpServers": {
     "flutter": {
-      "command": "dart",
+      "command": "/path/to/dart",
+      "args": ["run", "/path/to/flutter_devtools_mcp/bin/server.dart"]
+    }
+  }
+}
+```
+
+The server auto-discovers the running Flutter app via mDNS (`_dartobservatory._tcp`). If multiple apps are running, pass `FLUTTER_VM_SERVICE_URL` to pin a specific one:
+
+```json
+{
+  "mcpServers": {
+    "flutter": {
+      "command": "/path/to/dart",
       "args": ["run", "/path/to/flutter_devtools_mcp/bin/server.dart"],
       "env": {
         "FLUTTER_VM_SERVICE_URL": "ws://127.0.0.1:XXXXX/YYYY=/ws"

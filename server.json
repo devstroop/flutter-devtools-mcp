@@ -6,8 +6,8 @@
   "args": ["run", "bin/server.dart"],
   "env": {
     "FLUTTER_VM_SERVICE_URL": {
-      "description": "VM Service WebSocket URL (ws://127.0.0.1:<port>/ws)",
-      "required": true
+      "description": "VM Service WebSocket URL (ws://127.0.0.1:<port>/ws). Optional — auto-discovered via mDNS if omitted.",
+      "required": false
     }
   },
   "tools": [

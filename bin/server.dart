@@ -4,6 +4,7 @@ import 'package:args/args.dart';
 import 'package:logging/logging.dart';
 
 import 'package:flutter_devtools_mcp/src/connection.dart';
+import 'package:flutter_devtools_mcp/src/discovery.dart';
 import 'package:flutter_devtools_mcp/src/trace.dart';
 import 'package:flutter_devtools_mcp/src/tools/snapshot.dart';
 import 'package:flutter_devtools_mcp/src/tools/inspect.dart';
@@ -41,43 +42,12 @@ void main(List<String> args) async {
 
   final log = Logger('Server');
 
-  // -- Resolve VM Service URL
-  final vmUrl = (parsed['vm-service-url'] as String?) ??
+  // -- Resolve optional VM Service URL (may be discovered lazily on first tool call)
+  final configuredVmUrl = (parsed['vm-service-url'] as String?) ??
       Platform.environment['FLUTTER_VM_SERVICE_URL'];
 
-  if (vmUrl == null) {
-    stderr.writeln('Error: Provide VM Service URL via --vm-service-url or '
-        'FLUTTER_VM_SERVICE_URL env var.');
-    stderr.writeln('Run your Flutter app with: flutter run --debug');
-    stderr.writeln('Then copy the VM Service URL from the output.');
-    exit(1);
-  }
-
-  // -- Connect
-  final connection = FlutterConnection(vmServiceUrl: vmUrl);
+  FlutterConnection? connection;
   final trace = TraceLog();
-
-  try {
-    await connection.connect();
-    log.info('Connected to Flutter app');
-  } on ArgumentError catch (e) {
-    stderr.writeln('Invalid VM Service URL: $e');
-    stderr.writeln('URL must be a localhost WebSocket (ws://127.0.0.1:...)');
-    exit(1);
-  } on SocketException catch (e) {
-    stderr.writeln('Connection refused at $vmUrl');
-    stderr.writeln('Is your Flutter app running? Error: ${e.message}');
-    exit(1);
-  } catch (e) {
-    final msg = e.toString();
-    if (msg.contains('WebSocketException') || msg.contains('Connection refused')) {
-      stderr.writeln('Could not open WebSocket to $vmUrl');
-      stderr.writeln('Ensure the Flutter app is running in debug mode and the URL is correct.');
-    } else {
-      stderr.writeln('Failed to connect to VM Service at $vmUrl: $e');
-    }
-    exit(1);
-  }
 
   // -- MCP stdio transport
   // Read JSON-RPC requests from stdin, write responses to stdout.
@@ -118,7 +88,7 @@ void main(List<String> args) async {
 
         case 'exit':
           log.info('Exit requested');
-          await connection.disconnect();
+          await connection?.disconnect();
           exit(0);
 
         case 'ping':
@@ -248,6 +218,20 @@ void main(List<String> args) async {
           }
           final toolArgs = (params['arguments'] as Map<String, Object?>?) ?? {};
 
+          connection ??= await _connectToFlutter(log, configuredVmUrl);
+          if (connection == null) {
+            result = {
+              'isError': true,
+              'content': [
+                {
+                  'type': 'text',
+                  'text': 'Error: Not connected to a Flutter app. Start one with "flutter run --debug" or set FLUTTER_VM_SERVICE_URL.',
+                },
+              ],
+            };
+            break;
+          }
+
           result = await _handleToolCall(
             connection, trace, toolName, toolArgs,
           );
@@ -279,7 +263,56 @@ void main(List<String> args) async {
     }
   }
 
-  await connection.disconnect();
+  await connection?.disconnect();
+}
+
+Future<FlutterConnection?> _connectToFlutter(Logger log, String? configuredVmUrl) async {
+  String? vmUrl = configuredVmUrl;
+
+  if (vmUrl == null) {
+    // Auto-discover via mDNS — Flutter apps broadcast _dartobservatory._tcp
+    stderr.writeln('No VM Service URL provided. Scanning for Flutter apps via mDNS...');
+    final services = await discoverFlutterVmServices();
+
+    if (services.isEmpty) {
+      stderr.writeln('No running Flutter debug apps found.');
+      return null;
+    }
+
+    if (services.length > 1) {
+      stderr.writeln('Multiple Flutter apps found — connecting to the first:');
+      for (final s in services) {
+        stderr.writeln('  ${s.wsUrl}');
+      }
+    }
+
+    vmUrl = services.first.wsUrl;
+    log.info('Auto-discovered VM Service: $vmUrl');
+  }
+
+  final connection = FlutterConnection(vmServiceUrl: vmUrl);
+  try {
+    await connection.connect();
+    log.info('Connected to Flutter app');
+    return connection;
+  } on ArgumentError catch (e) {
+    stderr.writeln('Invalid VM Service URL: $e');
+    stderr.writeln('URL must be a localhost WebSocket (ws://127.0.0.1:...)');
+    return null;
+  } on SocketException catch (e) {
+    stderr.writeln('Connection refused at $vmUrl');
+    stderr.writeln('Is your Flutter app running? Error: ${e.message}');
+    return null;
+  } catch (e) {
+    final msg = e.toString();
+    if (msg.contains('WebSocketException') || msg.contains('Connection refused')) {
+      stderr.writeln('Could not open WebSocket to $vmUrl');
+      stderr.writeln('Ensure the Flutter app is running in debug mode and the URL is correct.');
+    } else {
+      stderr.writeln('Failed to connect to VM Service at $vmUrl: $e');
+    }
+    return null;
+  }
 }
 
 Future<Map<String, Object?>> _handleToolCall(

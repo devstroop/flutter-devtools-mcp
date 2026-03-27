@@ -7,6 +7,7 @@
 library flutter_devtools_mcp;
 
 export 'src/connection.dart';
+export 'src/discovery.dart';
 export 'src/selectors.dart';
 export 'src/transform.dart';
 export 'src/actions.dart';
