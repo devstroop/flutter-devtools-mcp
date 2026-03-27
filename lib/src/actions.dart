@@ -23,64 +23,45 @@ class NodeBounds {
 
 /// Get screen-space bounds for a resolved node.
 ///
-/// Uses `getDetailsSubtree` to fetch the render object's dimensions
-/// and `evaluate()` to get screen-space coordinates via `localToGlobal`.
+/// Uses `WidgetInspectorService.instance.toObject()` via evaluate() to
+/// access the actual Element, then calls `localToGlobal` on its RenderBox.
 Future<NodeBounds> getBounds(FlutterConnection connection, ResolvedNode node) async {
   _log.fine('Getting bounds for ${node.id}');
 
-  // Use evaluate() to get the RenderBox bounds via the Element's renderObject.
-  // We call getDetailsSubtree to get the render object info attached to the node.
-  final detailResponse = await connection.callInspector(
+  // Primary strategy: use evaluate() to get bounds via WidgetInspectorService.
+  // The inspector stores objects by (valueId, objectGroup). We use the MCP
+  // object group to retrieve the Element and query its RenderBox.
+  final objectGroup = 'mcp-bounds';
+
+  // Ensure the object is in the group by fetching a detail subtree
+  await connection.callInspector(
     'getDetailsSubtree',
-    {
-      'objectGroup': 'mcp-bounds',
-      'arg': node.id,
-      'subtreeDepth': '0',
-    },
+    {'objectGroup': objectGroup, 'arg': node.id, 'subtreeDepth': '0'},
   );
-  final detail = detailResponse.json!;
-
-  // Try to extract render object bounds from the detail response
-  final renderObject = detail['renderObject'] as Map<String, Object?>?;
-  if (renderObject != null) {
-    final renderProps = renderObject['properties'] as List<Object?>?;
-    if (renderProps != null) {
-      final bounds = _extractBoundsFromProperties(renderProps);
-      if (bounds != null) return bounds;
-    }
-  }
-
-  // Fallback: Use evaluate() to query the RenderBox directly.
-  // This works because Flutter inspector nodes have an objectId that
-  // can be used with the object group to get the underlying Element.
-  final objectId = detail['objectId'] as String? ?? node.id;
 
   try {
-    // Evaluate to get size and position via the RenderBox
-    final sizeResult = await connection.service.evaluate(
-      connection.isolateId,
-      objectId,
-      '() { '
-      'final ro = renderObject as RenderBox?; '
-      'if (ro == null || !ro.hasSize) return "null"; '
-      'final size = ro.size; '
-      'final offset = ro.localToGlobal(Offset.zero); '
-      'return "\${offset.dx},\${offset.dy},\${size.width},\${size.height}"; '
-      '}()',
-    );
+    final expr = '(() { '
+        'final obj = WidgetInspectorService.instance.toObject("${node.id}", "$objectGroup"); '
+        'if (obj is! Element) return "err:not-element"; '
+        'final ro = obj.findRenderObject(); '
+        'if (ro is! RenderBox || !ro.hasSize) return "err:no-renderbox"; '
+        'final offset = ro.localToGlobal(Offset.zero); '
+        'return "\${offset.dx},\${offset.dy},\${ro.size.width},\${ro.size.height}"; '
+        '})()';
 
-    final value = (sizeResult as dynamic).valueAsString as String?;
-    if (value != null && value != 'null') {
+    final result = await connection.evaluate(expr);
+    final value = result.valueAsString;
+    if (value != null && !value.startsWith('err:')) {
       final parts = value.split(',').map(double.parse).toList();
       return NodeBounds(x: parts[0], y: parts[1], width: parts[2], height: parts[3]);
     }
+    _log.fine('evaluate bounds returned: $value');
   } catch (e) {
-    _log.warning('Evaluate fallback for bounds failed: $e');
+    _log.fine('evaluate bounds failed: $e');
   }
 
-  // Final fallback: use the render tree approach
-  // Fetch the full render tree and search for our node's render object
-  return _getBoundsFromRenderTree(connection, node);
+  // Fallback: try getLayoutExplorerNode for at least the size
+  return _getBoundsFromLayoutExplorer(connection, node);
 }
 
 /// Extract bounds from render object properties returned by getDetailsSubtree.
@@ -134,26 +115,43 @@ NodeBounds? _extractBoundsFromProperties(List<Object?> properties) {
   return null;
 }
 
-/// Fallback: traverse the render tree to find bounds for a node.
-Future<NodeBounds> _getBoundsFromRenderTree(
+/// Fallback: use getLayoutExplorerNode for size (position defaults to 0,0).
+Future<NodeBounds> _getBoundsFromLayoutExplorer(
   FlutterConnection connection,
   ResolvedNode node,
 ) async {
-  // Use ext.flutter.inspector.getRenderObjectDiagnostics on the node
   try {
-    final response = await connection.callInspector(
+    final data = await connection.callInspector(
       'getLayoutExplorerNode',
       {
-        'groupName': 'mcp-bounds',
+        'objectGroup': 'mcp-bounds',
         'id': node.id,
         'subtreeDepth': '1',
       },
     );
-    final data = response.json!;
-    final properties = data['properties'] as List<Object?>?;
-    if (properties != null) {
-      final bounds = _extractBoundsFromProperties(properties);
-      if (bounds != null) return bounds;
+
+    // Check top-level size field
+    final sizeStr = data['size'] as String?;
+    if (sizeStr != null) {
+      final sizeMatch = RegExp(r'Size\(([\d.]+),\s*([\d.]+)\)').firstMatch(sizeStr);
+      if (sizeMatch != null) {
+        return NodeBounds(
+          x: 0,
+          y: 0,
+          width: double.parse(sizeMatch.group(1)!),
+          height: double.parse(sizeMatch.group(2)!),
+        );
+      }
+    }
+
+    // Check renderObject properties
+    final ro = data['renderObject'] as Map<String, Object?>?;
+    if (ro != null) {
+      final roProps = ro['properties'] as List<Object?>?;
+      if (roProps != null) {
+        final bounds = _extractBoundsFromProperties(roProps);
+        if (bounds != null) return bounds;
+      }
     }
   } catch (e) {
     _log.fine('getLayoutExplorerNode failed: $e');
@@ -231,7 +229,7 @@ Future<ActionabilityResult> checkActionability(
   // Check enabled state via node details
   var enabled = true;
   try {
-    final detailResponse = await connection.callInspector(
+    final detail = await connection.callInspector(
       'getDetailsSubtree',
       {
         'objectGroup': 'mcp-actionability',
@@ -239,7 +237,6 @@ Future<ActionabilityResult> checkActionability(
         'subtreeDepth': '0',
       },
     );
-    final detail = detailResponse.json!;
     final props = detail['properties'] as List<Object?>?;
     if (props != null) {
       for (final prop in props) {

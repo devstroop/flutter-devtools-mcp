@@ -9,7 +9,7 @@ Future<Map<String, Object?>> inspectTool(
   FlutterConnection connection,
   String nodeId,
 ) async {
-  final response = await connection.callInspector(
+  final rawNode = await connection.callInspector(
     'getDetailsSubtree',
     {
       'objectGroup': 'mcp-inspect',
@@ -17,6 +17,5 @@ Future<Map<String, Object?>> inspectTool(
       'subtreeDepth': '2',
     },
   );
-  final rawNode = response.json!;
   return transformTree(rawNode);
 }

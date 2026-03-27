@@ -74,21 +74,43 @@ class FlutterConnection {
   }
 
   /// Call a Flutter inspector extension method.
-  Future<Response> callInspector(String method, Map<String, Object?> args) {
-    return service.callServiceExtension(
+  ///
+  /// Returns the unwrapped result map from the service extension response.
+  /// (`callServiceExtension` wraps the actual data inside a `result` key.)
+  Future<Map<String, Object?>> callInspector(
+    String method,
+    Map<String, Object?> args,
+  ) async {
+    final response = await service.callServiceExtension(
       'ext.flutter.inspector.$method',
       isolateId: isolateId,
       args: args,
     );
+    final json = response.json!;
+    // Service extension responses wrap the payload under 'result'.
+    if (json.containsKey('result') && json['result'] is Map) {
+      return Map<String, Object?>.from(json['result'] as Map);
+    }
+    return json;
   }
 
   /// Call a Flutter driver extension method.
-  Future<Response> callDriver(String method, Map<String, Object?> args) {
-    return service.callServiceExtension(
+  ///
+  /// Returns the unwrapped result map from the service extension response.
+  Future<Map<String, Object?>> callDriver(
+    String method,
+    Map<String, Object?> args,
+  ) async {
+    final response = await service.callServiceExtension(
       'ext.flutter.driver.$method',
       isolateId: isolateId,
       args: args,
     );
+    final json = response.json!;
+    if (json.containsKey('result') && json['result'] is Map) {
+      return Map<String, Object?>.from(json['result'] as Map);
+    }
+    return json;
   }
 
   /// Take a screenshot via the Flutter screenshot extension.

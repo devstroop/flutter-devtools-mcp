@@ -123,18 +123,84 @@ Future<ResolvedNode> resolveSelector(
   _log.fine('Resolving: $selector');
 
   // 1. Fetch fresh summary tree
-  final treeResponse = await connection.callInspector(
+  final tree = await connection.callInspector(
     'getRootWidgetSummaryTree',
-    {'groupName': 'mcp-selector'},
+    {'objectGroup': 'mcp-selector'},
   );
-  final tree = treeResponse.json!;
 
-  // 2. Walk tree and collect matches
+  // 2. Collect all nodes from the summary tree
+  final allNodes = <_FlatNode>[];
+  _collectNodes(tree, allNodes);
+
+  // 3. Resolve based on selector tier
   final matches = <ResolvedNode>[];
-  _walkTree(tree, selector, matches);
 
-  // 3. Apply visibility filter
-  // TODO: filter by render object visibility when visibleOnly is true
+  switch (selector.tier) {
+    case SelectorTier.key:
+      // Keys are embedded in the description field: "WidgetType-[<'key_value'>]"
+      for (final n in allNodes) {
+        final key = _extractKeyFromDescription(n.description);
+        if (key != null && key == selector.value) {
+          matches.add(ResolvedNode(
+            id: n.valueId,
+            type: n.widgetType,
+            key: key,
+            matchedVia: SelectorTier.key,
+          ));
+        }
+      }
+
+    case SelectorTier.semantics:
+      // Find Semantics widgets and fetch their label property
+      final candidates = allNodes.where((n) => n.widgetType == 'Semantics').toList();
+      for (final c in candidates) {
+        final label = await _fetchSemanticsLabel(connection, c.valueId);
+        if (label != null && label == selector.value) {
+          // Return the Semantics node's CHILD as the resolved target
+          // (the actionable widget is the child, not the Semantics wrapper)
+          final childId = c.firstChildId ?? c.valueId;
+          final childType = c.firstChildType ?? c.widgetType;
+          matches.add(ResolvedNode(
+            id: childId,
+            type: childType,
+            label: label,
+            matchedVia: SelectorTier.semantics,
+          ));
+        }
+      }
+
+    case SelectorTier.text:
+      // Find Text/RichText widgets and fetch their data property
+      final candidates = allNodes.where(
+        (n) => n.widgetType == 'Text' || n.widgetType == 'RichText',
+      ).toList();
+      for (final c in candidates) {
+        final text = await _fetchTextData(connection, c.valueId);
+        if (text != null && text == selector.value) {
+          matches.add(ResolvedNode(
+            id: c.valueId,
+            type: c.widgetType,
+            text: text,
+            matchedVia: SelectorTier.text,
+          ));
+        }
+      }
+
+    case SelectorTier.byIndex:
+      // Count widgets by type using widgetRuntimeType
+      final counters = <String, int>{};
+      for (final n in allNodes) {
+        final count = counters[n.widgetType] ?? 0;
+        if (n.widgetType == selector.value && count == selector.index) {
+          matches.add(ResolvedNode(
+            id: n.valueId,
+            type: n.widgetType,
+            matchedVia: SelectorTier.byIndex,
+          ));
+        }
+        counters[n.widgetType] = count + 1;
+      }
+  }
 
   // 4. Resolve
   if (matches.isEmpty) {
@@ -159,139 +225,139 @@ Future<ResolvedNode> resolveSelector(
   return result;
 }
 
-void _walkTree(
-  Map<String, Object?> node,
-  Selector selector,
-  List<ResolvedNode> matches, {
-  Map<int, int>? typeCounters,
-}) {
-  typeCounters ??= {};
+/// Lightweight representation of a summary tree node.
+class _FlatNode {
+  final String valueId;
+  final String description;
+  final String widgetType;
+  final String? firstChildId;
+  final String? firstChildType;
 
-  // Extract node identity fields
-  final valueId = node['valueId'] as String? ?? node['objectId'] as String?;
-  final description = node['description'] as String? ??
-      node['widgetRuntimeType'] as String? ??
-      'Unknown';
+  _FlatNode({
+    required this.valueId,
+    required this.description,
+    required this.widgetType,
+    this.firstChildId,
+    this.firstChildType,
+  });
+}
 
-  // Extract properties (label, key, text) from the node
-  String? label;
-  String? key;
-  String? text;
-
-  final properties = node['properties'] as List<Object?>?;
-  if (properties != null) {
-    for (final prop in properties) {
-      if (prop is Map<String, Object?>) {
-        final name = prop['name'] as String?;
-        final value = (prop['description'] ?? prop['value'])?.toString();
-        if (value == null || value.isEmpty) continue;
-        switch (name) {
-          case 'label':
-          case 'semanticLabel':
-            label = value;
-          case 'key':
-            // Strip Key wrapper e.g. [<'submit_btn'>] → submit_btn
-            key = _stripKeyWrapper(value);
-          case 'data':
-          case 'text':
-            text = value;
-        }
+/// Flatten the summary tree into a list of nodes.
+void _collectNodes(Map<String, Object?> node, List<_FlatNode> out) {
+  final valueId = node['valueId'] as String?;
+  if (valueId == null) {
+    // Skip nodes without IDs, but still recurse into children
+    final children = node['children'] as List<Object?>?;
+    if (children != null) {
+      for (final child in children) {
+        if (child is Map<String, Object?>) _collectNodes(child, out);
       }
     }
+    return;
   }
 
-  // For Text widgets, also check description for inline text content
-  if (text == null && (description.startsWith('Text') || description.startsWith('RichText'))) {
-    // Text("Hello") shows as description = 'Text' with a 'data' property
-    // Already handled above via 'data' property
-  }
+  final description = node['description'] as String? ?? 'Unknown';
+  final widgetType = node['widgetRuntimeType'] as String? ?? description;
 
-  // Track widget type count for index-based selector
-  final typeKey = description.hashCode;
-  final currentIndex = typeCounters[typeKey] ?? 0;
-  typeCounters[typeKey] = currentIndex + 1;
-
-  // Match against selector
-  if (valueId != null) {
-    final matched = _matchesSelector(
-      selector: selector,
-      type: description,
-      label: label,
-      key: key,
-      text: text,
-      typeIndex: currentIndex,
-    );
-    if (matched != null) {
-      matches.add(ResolvedNode(
-        id: valueId,
-        type: description,
-        label: label,
-        key: key,
-        text: text,
-        matchedVia: matched,
-      ));
+  // Get the first child's identity (used for Semantics → child resolution)
+  String? firstChildId;
+  String? firstChildType;
+  final children = node['children'] as List<Object?>?;
+  if (children != null && children.isNotEmpty) {
+    final first = children.first;
+    if (first is Map<String, Object?>) {
+      firstChildId = first['valueId'] as String?;
+      firstChildType = first['widgetRuntimeType'] as String?;
     }
   }
 
-  // Recurse into children
-  final children = node['children'] as List<Object?>?;
+  out.add(_FlatNode(
+    valueId: valueId,
+    description: description,
+    widgetType: widgetType,
+    firstChildId: firstChildId,
+    firstChildType: firstChildType,
+  ));
+
+  // Recurse
   if (children != null) {
     for (final child in children) {
-      if (child is Map<String, Object?>) {
-        _walkTree(child, selector, matches, typeCounters: typeCounters);
-      }
+      if (child is Map<String, Object?>) _collectNodes(child, out);
     }
   }
 }
 
-/// Check if a node matches the given selector. Returns the tier matched
-/// or null if no match.
-SelectorTier? _matchesSelector({
-  required Selector selector,
-  required String type,
-  String? label,
-  String? key,
-  String? text,
-  required int typeIndex,
-}) {
-  switch (selector.tier) {
-    case SelectorTier.semantics:
-      if (label != null && label == selector.value) {
-        return SelectorTier.semantics;
+/// Fetch the 'label' property from a Semantics widget via getDetailsSubtree.
+Future<String?> _fetchSemanticsLabel(
+  FlutterConnection connection,
+  String nodeId,
+) async {
+  try {
+    final detail = await connection.callInspector(
+      'getDetailsSubtree',
+      {'objectGroup': 'mcp-selector', 'arg': nodeId, 'subtreeDepth': '0'},
+    );
+    final properties = detail['properties'] as List<Object?>?;
+    if (properties == null) return null;
+    for (final prop in properties) {
+      if (prop is Map<String, Object?>) {
+        final name = prop['name'] as String?;
+        if (name == 'label' || name == 'semanticLabel') {
+          // Prefer 'value' (clean string) over 'description' (may have wrapping quotes)
+          return (prop['value'] ?? _unquote(prop['description']))?.toString();
+        }
       }
-    case SelectorTier.key:
-      if (key != null && key == selector.value) {
-        return SelectorTier.key;
-      }
-    case SelectorTier.text:
-      if (text != null && text == selector.value) {
-        return SelectorTier.text;
-      }
-      // Also match against label and description for text searches
-      if (label != null && label == selector.value) {
-        return SelectorTier.text;
-      }
-    case SelectorTier.byIndex:
-      if (type == selector.value && typeIndex == selector.index) {
-        return SelectorTier.byIndex;
-      }
+    }
+  } catch (e) {
+    _log.fine('Failed to fetch semantics label for $nodeId: $e');
   }
   return null;
 }
 
-/// Strip Flutter's Key wrapper syntax: [<'name'>] → name, ValueKey<String>#abcde(name) → name
-String _stripKeyWrapper(String raw) {
-  // Pattern: [<'value'>]
-  final quoted = RegExp(r"\[<'(.+)'>\]").firstMatch(raw);
+/// Fetch the text content from a Text/RichText widget via getDetailsSubtree.
+Future<String?> _fetchTextData(
+  FlutterConnection connection,
+  String nodeId,
+) async {
+  try {
+    final detail = await connection.callInspector(
+      'getDetailsSubtree',
+      {'objectGroup': 'mcp-selector', 'arg': nodeId, 'subtreeDepth': '0'},
+    );
+    final properties = detail['properties'] as List<Object?>?;
+    if (properties == null) return null;
+    for (final prop in properties) {
+      if (prop is Map<String, Object?>) {
+        final name = prop['name'] as String?;
+        if (name == 'data' || name == 'text') {
+          return (prop['value'] ?? _unquote(prop['description']))?.toString();
+        }
+      }
+    }
+  } catch (e) {
+    _log.fine('Failed to fetch text data for $nodeId: $e');
+  }
+  return null;
+}
+
+/// Strip wrapping double quotes from StringProperty description values.
+/// Flutter's DiagnosticsNode.toJSON() wraps string descriptions in quotes.
+Object? _unquote(Object? value) {
+  if (value is String && value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
+    return value.substring(1, value.length - 1);
+  }
+  return value;
+}
+
+/// Extract a key value from a summary tree description like "ElevatedButton-[<'increment_btn'>]".
+String? _extractKeyFromDescription(String description) {
+  // Pattern: WidgetType-[<'key_value'>]
+  final quoted = RegExp(r"\[<'(.+?)'>]").firstMatch(description);
   if (quoted != null) return quoted.group(1)!;
 
-  // Pattern: ValueKey<Type>#hash(value)
-  final valueKey = RegExp(r'ValueKey<[^>]*>#\w+\((.+)\)').firstMatch(raw);
-  if (valueKey != null) return valueKey.group(1)!;
+  // Pattern: WidgetType-[<key_value>]
+  final unquoted = RegExp(r"\[<(.+?)>]").firstMatch(description);
+  if (unquoted != null) return unquoted.group(1)!;
 
-  // Pattern: ValueKey<Type>(value)
-  final simpleValueKey = RegExp(r'ValueKey<[^>]*>\((.+)\)').firstMatch(raw);
-  if (simpleValueKey != null) return simpleValueKey.group(1)!;
-
-  return raw;
+  return null;
 }

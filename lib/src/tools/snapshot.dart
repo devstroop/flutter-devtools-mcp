@@ -6,10 +6,9 @@ import '../transform.dart';
 /// Returns the current widget tree as LLM-friendly JSON.
 /// Uses `getRootWidgetSummaryTree` (already pruned by Flutter).
 Future<Map<String, Object?>> snapshotTool(FlutterConnection connection) async {
-  final response = await connection.callInspector(
+  final rawTree = await connection.callInspector(
     'getRootWidgetSummaryTree',
-    {'groupName': 'mcp-snapshot'},
+    {'objectGroup': 'mcp-snapshot'},
   );
-  final rawTree = response.json!;
   return transformTree(rawTree);
 }

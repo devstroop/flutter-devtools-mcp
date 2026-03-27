@@ -29,7 +29,21 @@ Map<String, Object?> transformTree(
     'type': rawNode['description'] ?? rawNode['widgetRuntimeType'] ?? 'Unknown',
   };
 
-  // Extract key (from properties or creationLocation)
+  // Extract key embedded in description: "ElevatedButton-[<'my_key'>]"
+  final desc = rawNode['description'] as String?;
+  if (desc != null) {
+    final keyMatch = RegExp(r"\[<'(.+?)'>]").firstMatch(desc);
+    if (keyMatch != null) {
+      result['key'] = keyMatch.group(1)!;
+    } else {
+      final keyMatch2 = RegExp(r"\[<(.+?)>]").firstMatch(desc);
+      if (keyMatch2 != null) {
+        result['key'] = keyMatch2.group(1)!;
+      }
+    }
+  }
+
+  // Extract additional info from properties (present in detailed trees)
   final properties = rawNode['properties'] as List<Object?>?;
   String? label;
   bool? enabled;

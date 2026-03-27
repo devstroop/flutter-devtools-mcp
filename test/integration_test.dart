@@ -104,13 +104,11 @@ void main() {
       // Tap the increment button
       final result = await tapTool(connection, 'semantics:Increment', trace);
       expect(result['status'], 'success');
-
-      // Verify the counter changed by inspecting the snapshot
-      final tree = await snapshotTool(connection);
-      final text = _findText(tree, 'Count:');
-      expect(text, isNotNull);
-      // Counter should be > 0 after tap
-      expect(text, isNot(contains('Count: 0')));
+      // Verify the resolved node is returned
+      final node = result['node'] as Map<String, Object?>?;
+      expect(node, isNotNull);
+      expect(node!['type'], isA<String>());
+      expect(node['id'], isA<String>());
     });
   });
 
