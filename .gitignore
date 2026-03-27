@@ -1,0 +1,17 @@
+# Dart
+.dart_tool/
+build/
+pubspec.lock
+
+# Debug artifacts (ad-hoc scripts, not part of the project)
+bin/debug_*.dart
+bin/probe_vm.dart
+debug_tree.json
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store

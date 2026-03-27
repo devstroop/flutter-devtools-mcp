@@ -1,0 +1,24 @@
+{
+  "name": "flutter_devtools_mcp",
+  "version": "0.1.0",
+  "description": "MCP server for Flutter UI automation via DevTools VM Service extensions",
+  "command": "dart",
+  "args": ["run", "bin/server.dart"],
+  "env": {
+    "FLUTTER_VM_SERVICE_URL": {
+      "description": "VM Service WebSocket URL (ws://127.0.0.1:<port>/ws)",
+      "required": true
+    }
+  },
+  "tools": [
+    "snapshot",
+    "inspect",
+    "tap",
+    "type_text",
+    "scroll",
+    "screenshot",
+    "hot_reload",
+    "evaluate",
+    "press_back"
+  ]
+}

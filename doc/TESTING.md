@@ -37,36 +37,41 @@ Test against ugly real apps, not clean demos. If it works on a messy production 
 
 ### Integration tests
 
-Run against a live Flutter debug app (test fixture app in `test/fixtures/`):
+Run against a live Flutter debug app (test fixture app in `test/fixtures/test_app/`):
 
 1. **Snapshot round-trip** — snapshot tool returns valid tree, nodes have IDs
-2. **Tap by semantics** — tap a labeled button, verify state change
-3. **Type into field** — enter text, read back via inspect
-4. **Scroll to item** — scroll ListView, verify target becomes visible
-5. **Screenshot capture** — returns valid PNG bytes
-6. **Hot reload** — modify source, reload, verify tree changes
-7. **Ambiguity error** — query matches 3 nodes, get explicit error
+2. **Inspect round-trip** — inspect a specific node, get properties
+3. **Selector resolution** — resolve by semantics label, key, and text
+4. **Tap by semantics** — tap a labeled button, verify state change
+5. **Type into field** — enter text, read back via inspect
+6. **Scroll** — scroll a list view, verify success
+7. **Press back** — pop a route via Navigator
+8. **Screenshot capture** — returns valid PNG bytes
+9. **Evaluate** — evaluate Dart expression, get result
+10. **Hot reload** — trigger hot reload, verify success
+11. **Trace log** — verify trace entries are recorded
+
+#### Running integration tests
+
+```bash
+# 1. Start the test fixture app
+cd test/fixtures/test_app
+flutter run --debug --disable-service-auth-codes
+
+# 2. Note the VM Service URL from output
+
+# 3. In another terminal, run integration tests
+export FLUTTER_VM_SERVICE_URL=ws://127.0.0.1:XXXXX/ws
+dart test --tags integration
+```
 
 ### Test fixture app
 
-A deliberately messy Flutter app (`test/fixtures/test_app/`) that includes:
+The test fixture at `test/fixtures/test_app/` is a 3-tab Flutter app:
 
-```
-- Nested Navigator (tab bar + modal routes)
-- ListView.builder (500 items)
-- showModalBottomSheet
-- showDialog
-- SegmentedButton
-- CustomPaint widget
-- FutureBuilder (simulated async)
-- Some widgets with Keys, some without
-- Some widgets with Semantics labels, most without
-- Text fields with and without focus
-- SwitchListTile, Checkbox, Slider
-- Hero animation between routes
-```
-
-This is the "if it works here, it works anywhere" app.
+- **Widget Gallery** — ElevatedButton, TextField, CheckboxListTile, Switch, Slider, DropdownButton (with semantics labels and keys)
+- **Scroll Tests** — ListView.builder with 100 numbered items
+- **Form Tests** — Multiple TextFields with different labels
 
 ## CI Strategy (v2)
 

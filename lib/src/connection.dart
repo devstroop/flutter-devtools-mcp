@@ -108,8 +108,13 @@ class FlutterConnection {
   }
 
   /// Evaluate a Dart expression in the main isolate's root library scope.
+  ///
+  /// Throws [StateError] if the expression evaluation fails at runtime.
   Future<InstanceRef> evaluate(String expression) async {
     final result = await service.evaluate(isolateId, rootLibraryId, expression);
+    if (result is ErrorRef) {
+      throw StateError('Evaluate failed: ${result.message ?? result.kind ?? 'unknown error'}');
+    }
     return result as InstanceRef;
   }
 

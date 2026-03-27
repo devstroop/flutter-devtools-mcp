@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:logging/logging.dart';
+import 'package:vm_service/vm_service.dart';
 
 import 'connection.dart';
 import 'selectors.dart';
@@ -257,7 +258,7 @@ Future<ActionabilityResult> checkActionability(
 
   return ActionabilityResult(
     visible: visible,
-    hitTestable: true, // TODO: overlay hit-test detection (v2)
+    hitTestable: true, // v2: overlay hit-test detection via hitTest() on RenderView
     inViewport: inViewport,
     enabled: enabled,
   );
@@ -295,30 +296,35 @@ Future<void> enterText(FlutterConnection connection, String text) async {
       .replaceAll(r'$', r'\$')
       .replaceAll("'", r"\'");
 
-  final result = await connection.evaluate(
-    '() { '
-    // Strategy 1: Get controller from the focused widget via dynamic access
-    "final controller = (primaryFocus?.context?.widget as dynamic)?.controller as TextEditingController?; "
-    'if (controller != null) { '
-    "  controller.text = '$escaped'; "
-    "  controller.selection = TextSelection.collapsed(offset: controller.text.length); "
-    "  return 'ok'; "
-    '} '
-    // Strategy 2: Walk the focus tree to find EditableText
-    'Element? target; '
-    'primaryFocus?.context?.visitAncestorElements((e) { '
-    '  if (e.widget is EditableText) { target = e; return false; } '
-    '  return true; '
-    '}); '
-    'if (target != null) { '
-    "  final et = target!.widget as EditableText; "
-    "  et.controller.text = '$escaped'; "
-    "  et.controller.selection = TextSelection.collapsed(offset: et.controller.text.length); "
-    "  return 'ok'; "
-    '} '
-    "return 'no-controller'; "
-    '}()',
-  );
+  late final InstanceRef result;
+  try {
+    result = await connection.evaluate(
+      '() { '
+      // Strategy 1: Get controller from the focused widget via dynamic access
+      "final controller = (primaryFocus?.context?.widget as dynamic)?.controller as TextEditingController?; "
+      'if (controller != null) { '
+      "  controller.text = '$escaped'; "
+      "  controller.selection = TextSelection.collapsed(offset: controller.text.length); "
+      "  return 'ok'; "
+      '} '
+      // Strategy 2: Walk the focus tree to find EditableText
+      'Element? target; '
+      'primaryFocus?.context?.visitAncestorElements((e) { '
+      '  if (e.widget is EditableText) { target = e; return false; } '
+      '  return true; '
+      '}); '
+      'if (target != null) { '
+      "  final et = target!.widget as EditableText; "
+      "  et.controller.text = '$escaped'; "
+      "  et.controller.selection = TextSelection.collapsed(offset: et.controller.text.length); "
+      "  return 'ok'; "
+      '} '
+      "return 'no-controller'; "
+      '}()',
+    );
+  } catch (e) {
+    throw StateError('No focused text field found. Tap a text field first.');
+  }
   final value = result.valueAsString;
   if (value == null || value == 'null' || value == 'no-controller') {
     throw StateError('No focused text field found. Tap a text field first.');

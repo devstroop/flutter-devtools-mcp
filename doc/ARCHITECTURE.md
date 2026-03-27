@@ -16,8 +16,7 @@ Thin MCP adapter over Flutter's existing VM Service extensions. No reimplementat
 │           VM Service Client          │  ← WebSocket connection
 ├─────────────────────────────────────┤
 │      Flutter VM Service Extensions   │  ← ext.flutter.inspector.*
-│                                     │     ext.flutter.driver.*
-│                                     │     _flutter.screenshot
+│      + evaluate() for actions        │     _flutter.screenshot
 └─────────────────────────────────────┘
 ```
 
@@ -36,11 +35,15 @@ These extensions are registered by the Flutter framework (not DevTools). Any Web
 | `getSelectedWidget` | Currently selected widget | Debug integration |
 | `setSelectionById` | Select a widget programmatically | DevTools bridge |
 
-### Act Layer — `ext.flutter.driver.*`
+### Act Layer — `evaluate()` gesture injection
 
-Legacy driver extensions, still functional and stable for external automation.
+Actions are performed by evaluating Dart expressions directly in the running app
+via the VM Service `evaluate()` API. This bypasses the legacy Flutter Driver protocol entirely.
 
-Used for: tap, scroll, enterText, waitFor, requestData.
+- **Tap / scroll**: `WidgetsBinding.instance.handlePointerEvent()` with synthetic pointer events
+- **Text entry**: `TextEditingController.text =` on the focused field's controller
+- **Back navigation**: `Navigator.of(context).maybePop()`
+- **Bounds resolution**: `WidgetInspectorService.instance.toObject()` → Element → RenderBox → `localToGlobal`
 
 ### Screenshot Layer — `_flutter.screenshot`
 
@@ -52,23 +55,23 @@ Captures the current render tree as PNG bytes.
 
 ```
 1. Resolve selector
-   └── getRootWidgetSummaryTree() → find matching node by semantics label
+   └── getRootWidgetSummaryTree() → flatten tree → match by semantics label
    └── if ambiguous → error with match count + details
    └── if no match → error
 
 2. Get bounds
-   └── getRootRenderObject() → find render object for matched node
-   └── extract screen-space bounds
+   └── evaluate() → WidgetInspectorService.toObject(id, group)
+   └── access Element → RenderBox → localToGlobal(Offset.zero) + size
    └── compute center point
 
 3. Actionability check
    ├── visible? (not offstage, not zero-size)
-   ├── hit-testable? (not obscured by overlay)
+   ├── hit-testable? (always true in v1 — v2: RenderView.hitTest)
    ├── within viewport?
-   └── enabled? (not disabled widget)
+   └── enabled? (check onPressed != null via evaluate)
 
 4. Execute
-   └── driver tap at computed coordinates
+   └── evaluate() → handlePointerEvent(PointerDownEvent + PointerUpEvent at center)
 
 5. Trace
    └── log { action, selector, resolved_node, bounds, timestamp, result }
@@ -124,7 +127,43 @@ Source data:
 ## Constraints
 
 1. **No caching across tool calls** — every invocation starts fresh
-2. **Inspector = truth, driver = execution** — never mix
+2. **Inspector = truth, evaluate = execution** — read via extensions, act via evaluate
 3. **Single node or error** — ambiguous selectors fail explicitly
 4. **Always re-fetch bounds before action** — no stale coordinates
 5. **Localhost only** — refuse non-local VM Service URLs
+
+## Development Setup
+
+### Prerequisites
+
+- Dart SDK ≥ 3.0
+- Flutter SDK (for running the test fixture app)
+- A physical or virtual device / emulator
+
+### Running the test fixture
+
+```bash
+cd test/fixtures/test_app
+flutter run --debug --disable-service-auth-codes
+# Note the VM Service URL
+```
+
+### Running tests
+
+```bash
+# Unit tests only
+dart test --exclude-tags integration
+
+# Integration tests (requires running test fixture)
+export FLUTTER_VM_SERVICE_URL=ws://127.0.0.1:<port>/ws
+dart test --tags integration
+
+# All tests
+dart test
+```
+
+### Static analysis
+
+```bash
+dart analyze lib/ bin/server.dart
+```

@@ -4,14 +4,14 @@ MCP server for Flutter UI automation. Thin adapter over Flutter's existing VM Se
 
 ## What this is
 
-A [Model Context Protocol](https://modelcontextprotocol.io/) server that connects to a running Flutter debug app and exposes widget inspection, interaction, and screenshot tools. Built on top of the same `ext.flutter.inspector.*` and `ext.flutter.driver.*` extensions that Flutter DevTools uses.
+A [Model Context Protocol](https://modelcontextprotocol.io/) server that connects to a running Flutter debug app and exposes widget inspection, interaction, and screenshot tools. Built on top of `ext.flutter.inspector.*` extensions and `evaluate()` for gesture injection.
 
 ```
 Flutter App (debug mode)
     │
-    ├── ext.flutter.inspector.*   ← tree reading
-    ├── ext.flutter.driver.*      ← actions (tap, type, scroll)
-    └── _flutter.screenshot       ← capture
+    ├── ext.flutter.inspector.*       ← tree reading / node details
+    ├── evaluate()                    ← actions (tap, type, scroll, back)
+    └── _flutter.screenshot           ← capture
     │
     ▼
 VM Service WebSocket (ws://127.0.0.1:<port>/ws)
@@ -35,6 +35,7 @@ LLM / CLI / Automation Client
 | `screenshot` | Capture current screen as PNG |
 | `hot_reload` | Trigger hot reload |
 | `evaluate` | Evaluate a Dart expression at runtime |
+| `press_back` | Press system back button / pop the top route |
 
 ## Selector System
 
@@ -89,8 +90,9 @@ dart run bin/server.dart --vm-service-url ws://127.0.0.1:XXXXX/YYYY=/ws
 - `getDetailsSubtree` → deep properties for a specific node
 - `getRootRenderObject` → render tree with bounds
 
-**Act layer** — `ext.flutter.driver.*`
-- Tap, scroll, enter text via coordinate-based or finder-based targeting
+**Act layer** — `evaluate()` gesture injection
+- Tap, scroll, enter text via `WidgetsBinding.instance.handlePointerEvent()`
+- Back navigation via `Navigator.of(context).maybePop()`
 - Actions always re-fetch bounds before execution (no stale coordinates)
 
 **Key constraint: No caching across tool calls.** Every tool invocation starts with fresh data from the VM Service. This prevents stale-state bugs at the cost of negligible latency over localhost WebSocket.
@@ -113,7 +115,7 @@ flutter_devtools_mcp/
 │       ├── connection.dart     ← VM Service WebSocket client
 │       ├── selectors.dart      ← 4-tier selector resolution
 │       ├── transform.dart      ← DiagnosticsNode → LLM-friendly JSON
-│       ├── actions.dart        ← coordinate-based tap/scroll/type
+│       ├── actions.dart        ← gesture injection via evaluate()
 │       ├── retry.dart          ← auto-retry with actionability checks
 │       ├── trace.dart          ← structured action logging
 │       └── tools/
@@ -124,7 +126,8 @@ flutter_devtools_mcp/
 │           ├── scroll.dart     ← scroll tool
 │           ├── screenshot.dart ← screenshot tool
 │           ├── hot_reload.dart ← hot reload tool
-│           └── evaluate.dart   ← Dart evaluation tool
+│           ├── evaluate.dart   ← Dart evaluation tool
+│           └── press_back.dart ← back navigation tool
 ├── test/
 ├── doc/
 │   ├── ARCHITECTURE.md
