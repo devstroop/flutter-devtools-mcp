@@ -14,6 +14,7 @@ class FlutterConnection {
   final String vmServiceUrl;
   VmService? _service;
   IsolateRef? _mainIsolate;
+  String? _rootLibraryId;
 
   FlutterConnection({required this.vmServiceUrl}) {
     if (!_isLocalhost(vmServiceUrl)) {
@@ -33,6 +34,13 @@ class FlutterConnection {
     return iso.id!;
   }
 
+  /// The root library ID of the main isolate, used as the target for evaluate().
+  String get rootLibraryId {
+    final id = _rootLibraryId;
+    if (id == null) throw StateError('No root library found. Call connect() first.');
+    return id;
+  }
+
   /// Connect to the VM Service and discover the main Flutter isolate.
   Future<void> connect() async {
     _log.info('Connecting to $vmServiceUrl');
@@ -43,6 +51,26 @@ class FlutterConnection {
       orElse: () => vm.isolates!.first,
     );
     _log.info('Connected. Isolate: ${_mainIsolate?.id}');
+
+    // Discover the root library for evaluate() calls
+    final isolate = await _service!.getIsolate(isolateId);
+    final rootLib = isolate.rootLib;
+    if (rootLib != null) {
+      _rootLibraryId = rootLib.id;
+      _log.fine('Root library: ${rootLib.uri} (${rootLib.id})');
+    } else {
+      // Fallback: find a Flutter library from the loaded libraries
+      final libs = isolate.libraries ?? [];
+      for (final lib in libs) {
+        final uri = lib.uri ?? '';
+        if (uri.startsWith('package:flutter/')) {
+          _rootLibraryId = lib.id;
+          _log.fine('Using Flutter library: $uri (${lib.id})');
+          break;
+        }
+      }
+      _rootLibraryId ??= libs.isNotEmpty ? libs.first.id : null;
+    }
   }
 
   /// Call a Flutter inspector extension method.
@@ -76,9 +104,9 @@ class FlutterConnection {
     return service.reloadSources(isolateId);
   }
 
-  /// Evaluate a Dart expression in the main isolate.
+  /// Evaluate a Dart expression in the main isolate's root library scope.
   Future<InstanceRef> evaluate(String expression) async {
-    final result = await service.evaluate(isolateId, '', expression);
+    final result = await service.evaluate(isolateId, rootLibraryId, expression);
     return result as InstanceRef;
   }
 

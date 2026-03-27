@@ -91,6 +91,21 @@ void main(List<String> args) async {
             },
           };
 
+        // Notification — no response required
+        case 'notifications/initialized':
+          log.info('Client initialized');
+          continue;
+
+        // Graceful shutdown
+        case 'shutdown':
+          log.info('Shutdown requested');
+          result = {};
+
+        case 'exit':
+          log.info('Exit requested');
+          await connection.disconnect();
+          exit(0);
+
         case 'tools/list':
           result = {
             'tools': [
@@ -190,14 +205,28 @@ void main(List<String> args) async {
 
         case 'tools/call':
           final toolName = params['name'] as String?;
+          if (toolName == null) {
+            result = {
+              'isError': true,
+              'content': [
+                {'type': 'text', 'text': 'Error: missing required "name" parameter'},
+              ],
+            };
+            break;
+          }
           final toolArgs = (params['arguments'] as Map<String, Object?>?) ?? {};
 
           result = await _handleToolCall(
-            connection, trace, toolName!, toolArgs,
+            connection, trace, toolName, toolArgs,
           );
 
         default:
-          result = {'error': 'Unknown method: $method'};
+          if (id != null) {
+            // Unknown method with an id = request → send JSON-RPC error
+            _respondError(id, -32601, 'Method not found: $method');
+          }
+          // Unknown method without id = notification → ignore
+          continue;
       }
 
       if (id != null) {
@@ -205,6 +234,16 @@ void main(List<String> args) async {
       }
     } catch (e, st) {
       log.severe('Error processing request: $e', e, st);
+      // Try to extract the request id to send an error response
+      try {
+        final request = json.decode(line) as Map<String, Object?>;
+        final id = request['id'];
+        if (id != null) {
+          _respondError(id, -32603, 'Internal error: $e');
+        }
+      } catch (_) {
+        // Malformed JSON — nothing we can respond to
+      }
     }
   }
 
@@ -253,6 +292,15 @@ void _respond(Object id, Map<String, Object?>? result) {
     'jsonrpc': '2.0',
     'id': id,
     'result': result,
+  });
+  stdout.writeln(response);
+}
+
+void _respondError(Object id, int code, String message) {
+  final response = json.encode({
+    'jsonrpc': '2.0',
+    'id': id,
+    'error': {'code': code, 'message': message},
   });
   stdout.writeln(response);
 }

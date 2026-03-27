@@ -208,7 +208,7 @@ Future<ActionabilityResult> checkActionability(
   try {
     final screenResult = await connection.service.evaluate(
       connection.isolateId,
-      '',
+      connection.rootLibraryId,
       'WidgetsBinding.instance.renderViews.first.size.toString()',
     );
     final screenStr = (screenResult as dynamic).valueAsString as String?;
@@ -274,7 +274,7 @@ Future<void> tap(FlutterConnection connection, NodeBounds bounds) async {
   // This uses the GestureBinding to simulate a pointer event sequence.
   await connection.service.evaluate(
     connection.isolateId,
-    '',
+    connection.rootLibraryId,
     '() async { '
     'final binding = WidgetsBinding.instance; '
     'final pos = Offset(${bounds.centerX}, ${bounds.centerY}); '
@@ -297,7 +297,7 @@ Future<void> enterText(FlutterConnection connection, String text) async {
 
   await connection.service.evaluate(
     connection.isolateId,
-    '',
+    connection.rootLibraryId,
     '() async { '
     "final controller = (primaryFocus?.context?.widget as dynamic)?.controller as TextEditingController?; "
     'if (controller != null) { '
@@ -331,7 +331,7 @@ Future<void> scroll(
   // Inject a pointer drag gesture sequence
   await connection.service.evaluate(
     connection.isolateId,
-    '',
+    connection.rootLibraryId,
     '() async { '
     'final binding = WidgetsBinding.instance; '
     'var pos = Offset(${bounds.centerX}, ${bounds.centerY}); '
@@ -353,7 +353,7 @@ Future<void> pressBack(FlutterConnection connection) async {
 
   await connection.service.evaluate(
     connection.isolateId,
-    '',
+    connection.rootLibraryId,
     '() { '
     'final nav = Navigator.of(WidgetsBinding.instance.renderViewElement!.context, rootNavigator: true); '
     'if (nav.canPop()) { nav.pop(); return "popped"; } '
