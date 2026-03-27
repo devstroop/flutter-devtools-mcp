@@ -51,6 +51,6 @@ Future<Map<String, Object?>> scrollTool(
       result: 'error',
       error: e.toString(),
     );
-    rethrow;
+    return {'status': 'error', 'error': e.toString()};
   }
 }

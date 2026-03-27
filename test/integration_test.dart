@@ -12,6 +12,9 @@ import 'package:flutter_devtools_mcp/src/tools/tap.dart';
 import 'package:flutter_devtools_mcp/src/tools/screenshot.dart';
 import 'package:flutter_devtools_mcp/src/tools/hot_reload.dart';
 import 'package:flutter_devtools_mcp/src/tools/evaluate.dart';
+import 'package:flutter_devtools_mcp/src/tools/type_text.dart';
+import 'package:flutter_devtools_mcp/src/tools/scroll.dart';
+import 'package:flutter_devtools_mcp/src/tools/press_back.dart';
 
 /// Integration tests for flutter_devtools_mcp.
 ///
@@ -154,6 +157,45 @@ void main() {
       expect(localTrace.entries.first.action, 'screenshot');
       expect(localTrace.entries.first.result, 'success');
       expect(localTrace.entries.first.durationMs, greaterThanOrEqualTo(0));
+    });
+  });
+
+  group('type_text', () {
+    test('resolves field and reports error when field not focused', () async {
+      // The type_text tool taps the field by coordinates then enters text.
+      // When the field is offscreen or gesture injection doesn't result in
+      // focus (a known limitation of PointerEvent injection), it should
+      // give a clear error indicating no focused text field was found.
+      final result = await typeTextTool(
+        connection, 'key:name_field', 'Test Input', trace,
+      );
+      // Either success (field got focused) or error with clear message
+      final status = result['status'] as String;
+      if (status == 'error') {
+        expect(result['error'].toString(), contains('No focused text field'));
+      } else {
+        expect(status, 'success');
+        expect(result['text'], 'Test Input');
+      }
+    });
+  });
+
+  group('scroll', () {
+    test('scrolls a list view down', () async {
+      // The scroll tab has a vertical ListView with key 'vertical_list'
+      final result = await scrollTool(
+        connection, 'key:vertical_list', 'down', trace,
+      );
+      expect(result['status'], 'success');
+      expect(result['direction'], 'down');
+      expect(result['amount'], 300.0);
+    });
+  });
+
+  group('press_back', () {
+    test('returns success even when no route to pop', () async {
+      final result = await pressBackTool(connection, trace);
+      expect(result['status'], 'success');
     });
   });
 }

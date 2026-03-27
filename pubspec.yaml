@@ -8,11 +8,8 @@ environment:
 
 dependencies:
   vm_service: ^14.0.0
-  json_rpc_2: ^3.0.0
-  stream_channel: ^2.1.0
   web_socket_channel: ^3.0.0
   args: ^2.4.0
-  path: ^1.8.0
   logging: ^1.2.0
 
 dev_dependencies:

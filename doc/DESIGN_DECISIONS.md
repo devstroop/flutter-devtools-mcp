@@ -49,14 +49,16 @@ Decisions locked during architecture phase. Each has rationale and is final for 
 
 ---
 
-## DD-05: Inspector for reading, Driver for acting
+## DD-05: Inspector for reading, evaluate() for acting
 
-**Decision:** `ext.flutter.inspector.*` is the read layer. `ext.flutter.driver.*` is the act layer. Never mix.
+**Decision:** `ext.flutter.inspector.*` is the read layer. `evaluate()` with `WidgetsBinding` gesture injection is the action layer.
 
-**Rationale:** Inspector returns detailed tree data but has no action primitives. Driver has action primitives but limited inspection. Each stays in its lane:
+**Rationale:** Inspector returns detailed tree data. For actions (tap, scroll, text entry), we use `evaluate()` to inject `PointerDownEvent`/`PointerUpEvent` directly via `WidgetsBinding.instance.handlePointerEvent()`. This avoids dependency on the legacy `ext.flutter.driver` protocol and gives us full control over gesture synthesis.
+
+**Pipeline:**
 - Resolve node via inspector (`valueId`)
-- Derive bounds via render tree
-- Act via driver (coordinates)
+- Get screen bounds via `WidgetInspectorService.instance.toObject()` + `localToGlobal()`
+- Inject gestures via `evaluate()` on `WidgetsBinding`
 
 ---
 
@@ -128,8 +130,14 @@ Decisions locked during architecture phase. Each has rationale and is final for 
 
 ---
 
-## DD-12: Start with ext.flutter.driver, design for replacement
+## DD-12: evaluate() for gesture injection
 
-**Decision:** Use `ext.flutter.driver` for v1 actions. Design the action interface so the backend can be swapped later (e.g., to gesture injection via `evaluate()`).
+**Decision:** Actions use `evaluate()` to inject pointer events via `WidgetsBinding.instance.handlePointerEvent()`. This replaced the original plan to use `ext.flutter.driver`.
 
-**Rationale:** `ext.flutter.driver` is effectively legacy (Flutter team moved toward `integration_test`), but it's stable, works, and requires zero app-side code. For v1, speed of implementation wins. The MCP tool interface doesn't change when the action backend changes.
+**Rationale:** `ext.flutter.driver` is legacy and limited — it provides finder-based actions but not coordinate-based gesture synthesis. Using `evaluate()` gives direct access to the gesture pipeline:
+- Tap: `PointerDownEvent` → delay → `PointerUpEvent`
+- Scroll: `PointerDownEvent` → `PointerMoveEvent` sequence → `PointerUpEvent`
+- Text: `TextEditingController.text = ...` via the focused widget
+- Back: `Navigator.pop()`
+
+This approach requires zero app-side code and works with any Flutter debug app. `callDriver()` was removed as unused.

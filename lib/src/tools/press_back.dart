@@ -1,35 +1,34 @@
 import '../connection.dart';
+import '../actions.dart' as actions;
 import '../trace.dart';
 
-/// MCP tool: hot_reload
+/// MCP tool: press_back
 ///
-/// Trigger a hot reload on the connected Flutter app.
-Future<Map<String, Object?>> hotReloadTool(
+/// Pop the top route from the navigator stack.
+Future<Map<String, Object?>> pressBackTool(
   FlutterConnection connection,
   TraceLog trace,
 ) async {
   final startTime = trace.start();
 
   try {
-    final report = await connection.hotReload();
+    await actions.pressBack(connection);
 
     trace.complete(
-      action: 'hot_reload',
+      action: 'press_back',
       startTimeMs: startTime,
       result: 'success',
     );
 
-    return {
-      'status': 'success',
-      'success': report.success,
-    };
+    return {'status': 'success'};
   } catch (e) {
     trace.complete(
-      action: 'hot_reload',
+      action: 'press_back',
       startTimeMs: startTime,
       result: 'error',
       error: e.toString(),
     );
+
     return {'status': 'error', 'error': e.toString()};
   }
 }

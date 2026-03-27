@@ -53,6 +53,6 @@ Future<Map<String, Object?>> tapTool(
       result: 'error',
       error: e.toString(),
     );
-    rethrow;
+    return {'status': 'error', 'error': e.toString()};
   }
 }

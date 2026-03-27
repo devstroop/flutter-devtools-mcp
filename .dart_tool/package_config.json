@@ -170,12 +170,6 @@
       "languageVersion": "3.9"
     },
     {
-      "name": "json_rpc_2",
-      "rootUri": "file:///Users/itsalfredakku/.pub-cache/hosted/pub.dev/json_rpc_2-3.0.3",
-      "packageUri": "lib/",
-      "languageVersion": "3.4"
-    },
-    {
       "name": "lints",
       "rootUri": "file:///Users/itsalfredakku/.pub-cache/hosted/pub.dev/lints-4.0.0",
       "packageUri": "lib/",

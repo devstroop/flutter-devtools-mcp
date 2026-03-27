@@ -289,25 +289,40 @@ Future<void> tap(FlutterConnection connection, NodeBounds bounds) async {
 Future<void> enterText(FlutterConnection connection, String text) async {
   _log.info('Enter text: "${text.length > 20 ? '${text.substring(0, 20)}...' : text}"');
 
-  // Escape the text for embedding in Dart source
-  final escaped = text.replaceAll(r'\', r'\\').replaceAll("'", r"\'");
+  // Escape the text for embedding in Dart source — must escape $, \, and '
+  final escaped = text
+      .replaceAll(r'\', r'\\')
+      .replaceAll(r'$', r'\$')
+      .replaceAll("'", r"\'");
 
-  await connection.service.evaluate(
-    connection.isolateId,
-    connection.rootLibraryId,
-    '() async { '
+  final result = await connection.evaluate(
+    '() { '
+    // Strategy 1: Get controller from the focused widget via dynamic access
     "final controller = (primaryFocus?.context?.widget as dynamic)?.controller as TextEditingController?; "
     'if (controller != null) { '
     "  controller.text = '$escaped'; "
     "  controller.selection = TextSelection.collapsed(offset: controller.text.length); "
     "  return 'ok'; "
     '} '
-    // Fallback: use the system text input channel
-    'final binding = WidgetsBinding.instance; '
-    "final channel = binding.defaultBinaryMessenger; "
-    "return 'focused'; "
+    // Strategy 2: Walk the focus tree to find EditableText
+    'Element? target; '
+    'primaryFocus?.context?.visitAncestorElements((e) { '
+    '  if (e.widget is EditableText) { target = e; return false; } '
+    '  return true; '
+    '}); '
+    'if (target != null) { '
+    "  final et = target!.widget as EditableText; "
+    "  et.controller.text = '$escaped'; "
+    "  et.controller.selection = TextSelection.collapsed(offset: et.controller.text.length); "
+    "  return 'ok'; "
+    '} '
+    "return 'no-controller'; "
     '}()',
   );
+  final value = result.valueAsString;
+  if (value == null || value == 'null' || value == 'no-controller') {
+    throw StateError('No focused text field found. Tap a text field first.');
+  }
 }
 
 /// Scroll a scrollable widget by injecting a pointer drag gesture.

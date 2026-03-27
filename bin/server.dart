@@ -13,6 +13,7 @@ import 'package:flutter_devtools_mcp/src/tools/scroll.dart';
 import 'package:flutter_devtools_mcp/src/tools/screenshot.dart';
 import 'package:flutter_devtools_mcp/src/tools/hot_reload.dart';
 import 'package:flutter_devtools_mcp/src/tools/evaluate.dart';
+import 'package:flutter_devtools_mcp/src/tools/press_back.dart';
 
 /// MCP server entry point.
 ///
@@ -105,6 +106,15 @@ void main(List<String> args) async {
           log.info('Exit requested');
           await connection.disconnect();
           exit(0);
+
+        case 'ping':
+          result = {};
+
+        case 'resources/list':
+          result = {'resources': []};
+
+        case 'prompts/list':
+          result = {'prompts': []};
 
         case 'tools/list':
           result = {
@@ -200,6 +210,14 @@ void main(List<String> args) async {
                   'required': ['expression'],
                 },
               },
+              {
+                'name': 'press_back',
+                'description': 'Press the system back button / pop the top route.',
+                'inputSchema': {
+                  'type': 'object',
+                  'properties': {},
+                },
+              },
             ],
           };
 
@@ -259,18 +277,35 @@ Future<Map<String, Object?>> _handleToolCall(
   try {
     final content = switch (tool) {
       'snapshot' => await snapshotTool(connection),
-      'inspect' => await inspectTool(connection, args['nodeId'] as String),
-      'tap' => await tapTool(connection, args['selector'] as String, trace),
+      'inspect' => await inspectTool(connection, _requireArg<String>(args, 'nodeId')),
+      'tap' => await tapTool(connection, _requireArg<String>(args, 'selector'), trace),
       'type_text' => await typeTextTool(
-          connection, args['selector'] as String, args['text'] as String, trace),
+          connection, _requireArg<String>(args, 'selector'),
+          _requireArg<String>(args, 'text'), trace),
       'scroll' => await scrollTool(
-          connection, args['selector'] as String, args['direction'] as String, trace,
+          connection, _requireArg<String>(args, 'selector'),
+          _requireArg<String>(args, 'direction'), trace,
           amount: (args['amount'] as num?)?.toDouble() ?? 300.0),
       'screenshot' => await screenshotTool(connection, trace),
       'hot_reload' => await hotReloadTool(connection, trace),
-      'evaluate' => await evaluateTool(connection, args['expression'] as String, trace),
+      'evaluate' => await evaluateTool(
+          connection, _requireArg<String>(args, 'expression'), trace),
+      'press_back' => await pressBackTool(connection, trace),
       _ => {'error': 'Unknown tool: $tool'},
     };
+
+    // Return screenshot with MCP image content type when possible
+    if (tool == 'screenshot') {
+      final screenshotResult = content;
+      final data = screenshotResult['data'] as String?;
+      if (data != null && screenshotResult['status'] == 'success') {
+        return {
+          'content': [
+            {'type': 'image', 'data': data, 'mimeType': 'image/png'},
+          ],
+        };
+      }
+    }
 
     return {
       'content': [
@@ -303,4 +338,18 @@ void _respondError(Object id, int code, String message) {
     'error': {'code': code, 'message': message},
   });
   stdout.writeln(response);
+}
+
+/// Extract a required argument from tool args, with a clear error message.
+T _requireArg<T extends Object>(Map<String, Object?> args, String name) {
+  final value = args[name];
+  if (value == null) {
+    throw ArgumentError('Missing required parameter: "$name"');
+  }
+  if (value is! T) {
+    throw ArgumentError(
+      'Parameter "$name" must be $T, got ${value.runtimeType}',
+    );
+  }
+  return value;
 }

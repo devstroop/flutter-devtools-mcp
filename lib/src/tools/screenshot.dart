@@ -33,6 +33,6 @@ Future<Map<String, Object?>> screenshotTool(
       result: 'error',
       error: e.toString(),
     );
-    rethrow;
+    return {'status': 'error', 'error': e.toString()};
   }
 }

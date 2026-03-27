@@ -94,25 +94,6 @@ class FlutterConnection {
     return json;
   }
 
-  /// Call a Flutter driver extension method.
-  ///
-  /// Returns the unwrapped result map from the service extension response.
-  Future<Map<String, Object?>> callDriver(
-    String method,
-    Map<String, Object?> args,
-  ) async {
-    final response = await service.callServiceExtension(
-      'ext.flutter.driver.$method',
-      isolateId: isolateId,
-      args: args,
-    );
-    final json = response.json!;
-    if (json.containsKey('result') && json['result'] is Map) {
-      return Map<String, Object?>.from(json['result'] as Map);
-    }
-    return json;
-  }
-
   /// Take a screenshot via the Flutter screenshot extension.
   Future<Response> screenshot() {
     return service.callServiceExtension(
