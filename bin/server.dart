@@ -15,6 +15,22 @@ import 'package:flutter_devtools_mcp/src/tools/screenshot.dart';
 import 'package:flutter_devtools_mcp/src/tools/hot_reload.dart';
 import 'package:flutter_devtools_mcp/src/tools/evaluate.dart';
 import 'package:flutter_devtools_mcp/src/tools/press_back.dart';
+import 'package:flutter_devtools_mcp/src/tools/toggle_dark_mode.dart';
+import 'package:flutter_devtools_mcp/src/tools/toggle_platform.dart';
+import 'package:flutter_devtools_mcp/src/tools/get_memory.dart';
+import 'package:flutter_devtools_mcp/src/tools/dump_semantics.dart';
+import 'package:flutter_devtools_mcp/src/tools/hot_restart.dart';
+import 'package:flutter_devtools_mcp/src/tools/get_errors.dart';
+import 'package:flutter_devtools_mcp/src/tools/toggle_debug_paint.dart';
+import 'package:flutter_devtools_mcp/src/tools/toggle_repaint_rainbow.dart';
+import 'package:flutter_devtools_mcp/src/tools/toggle_slow_animations.dart';
+import 'package:flutter_devtools_mcp/src/tools/toggle_performance_overlay.dart';
+import 'package:flutter_devtools_mcp/src/tools/get_render_tree.dart';
+import 'package:flutter_devtools_mcp/src/tools/get_layer_tree.dart';
+import 'package:flutter_devtools_mcp/src/tools/get_parent_chain.dart';
+import 'package:flutter_devtools_mcp/src/tools/track_rebuilds.dart';
+import 'package:flutter_devtools_mcp/src/tools/track_repaints.dart';
+import 'package:flutter_devtools_mcp/src/tools/get_logs.dart';
 
 /// MCP server entry point.
 ///
@@ -202,6 +218,182 @@ void main(List<String> args) async {
                   'properties': {},
                 },
               },
+              {
+                'name': 'toggle_dark_mode',
+                'description': 'Toggle dark/light mode. Set enable=true for dark, false for light.',
+                'inputSchema': {
+                  'type': 'object',
+                  'properties': {
+                    'enable': {'type': 'boolean', 'description': 'true=dark, false=light'},
+                  },
+                  'required': ['enable'],
+                },
+              },
+              {
+                'name': 'toggle_platform',
+                'description': 'Override the target platform (test iOS rendering on Android, etc). '
+                    'Values: android, ios, fuchsia, linux, macos, windows.',
+                'inputSchema': {
+                  'type': 'object',
+                  'properties': {
+                    'platform': {
+                      'type': 'string',
+                      'enum': ['android', 'ios', 'fuchsia', 'linux', 'macos', 'windows'],
+                      'description': 'Target platform to emulate',
+                    },
+                  },
+                  'required': ['platform'],
+                },
+              },
+              {
+                'name': 'get_memory',
+                'description': 'Get memory usage of the Flutter app (heap used/capacity, external).',
+                'inputSchema': {
+                  'type': 'object',
+                  'properties': {},
+                },
+              },
+              {
+                'name': 'dump_semantics',
+                'description': 'Dump the accessibility/semantics tree in traversal order. '
+                    'Useful for verifying a11y labels and screen reader output.',
+                'inputSchema': {
+                  'type': 'object',
+                  'properties': {},
+                },
+              },
+              {
+                'name': 'hot_restart',
+                'description': 'Full hot restart — resets all app state while keeping loaded code. '
+                    'Unlike hot_reload, this restarts the app from scratch.',
+                'inputSchema': {
+                  'type': 'object',
+                  'properties': {},
+                },
+              },
+              {
+                'name': 'get_errors',
+                'description': 'Get Flutter framework errors from the running app. '
+                    'Returns structured error info (red screen errors, layout overflows, etc).',
+                'inputSchema': {
+                  'type': 'object',
+                  'properties': {},
+                },
+              },
+              {
+                'name': 'toggle_debug_paint',
+                'description': 'Toggle debug paint overlay — shows widget boundaries, padding, '
+                    'and alignment guides. Take a screenshot to see the overlay.',
+                'inputSchema': {
+                  'type': 'object',
+                  'properties': {
+                    'enable': {'type': 'boolean', 'description': 'true to show debug paint, false to hide'},
+                  },
+                  'required': ['enable'],
+                },
+              },
+              {
+                'name': 'toggle_repaint_rainbow',
+                'description': 'Toggle repaint rainbow — rotating colors on repainted regions. '
+                    'Helps identify widgets repainting too frequently.',
+                'inputSchema': {
+                  'type': 'object',
+                  'properties': {
+                    'enable': {'type': 'boolean', 'description': 'true to enable, false to disable'},
+                  },
+                  'required': ['enable'],
+                },
+              },
+              {
+                'name': 'toggle_slow_animations',
+                'description': 'Slow down or restore animation speed. '
+                    '1.0 = normal, 2.0 = 2× slower, 5.0 = 5× slower, 10.0 = 10× slower.',
+                'inputSchema': {
+                  'type': 'object',
+                  'properties': {
+                    'timeDilation': {
+                      'type': 'number',
+                      'description': 'Time dilation factor (1.0 = normal speed)',
+                    },
+                  },
+                  'required': ['timeDilation'],
+                },
+              },
+              {
+                'name': 'toggle_performance_overlay',
+                'description': 'Toggle the performance overlay showing frame timing graphs '
+                    '(UI thread and raster thread). Take a screenshot to capture it.',
+                'inputSchema': {
+                  'type': 'object',
+                  'properties': {
+                    'enable': {'type': 'boolean', 'description': 'true to show overlay, false to hide'},
+                  },
+                  'required': ['enable'],
+                },
+              },
+              {
+                'name': 'get_render_tree',
+                'description': 'Dump the render object tree as text. Shows RenderObject hierarchy '
+                    'with layout constraints, sizes, and paint info.',
+                'inputSchema': {
+                  'type': 'object',
+                  'properties': {},
+                },
+              },
+              {
+                'name': 'get_layer_tree',
+                'description': 'Dump the compositing layer tree as text. Shows how render objects '
+                    'are composed into GPU layers. Useful for diagnosing compositing overhead.',
+                'inputSchema': {
+                  'type': 'object',
+                  'properties': {},
+                },
+              },
+              {
+                'name': 'get_parent_chain',
+                'description': 'Get the parent chain (ancestor widgets) for a node ID from snapshot. '
+                    'Returns the path from the node up to the root widget.',
+                'inputSchema': {
+                  'type': 'object',
+                  'properties': {
+                    'nodeId': {'type': 'string', 'description': 'Node ID from snapshot'},
+                  },
+                  'required': ['nodeId'],
+                },
+              },
+              {
+                'name': 'track_rebuilds',
+                'description': 'Toggle widget rebuild tracking. When enabled, widgets show '
+                    'rebuild counts in the inspector overlay.',
+                'inputSchema': {
+                  'type': 'object',
+                  'properties': {
+                    'enable': {'type': 'boolean', 'description': 'true to start tracking, false to stop'},
+                  },
+                  'required': ['enable'],
+                },
+              },
+              {
+                'name': 'track_repaints',
+                'description': 'Toggle repaint tracking. When enabled, highlights render objects '
+                    'that are repainting.',
+                'inputSchema': {
+                  'type': 'object',
+                  'properties': {
+                    'enable': {'type': 'boolean', 'description': 'true to start tracking, false to stop'},
+                  },
+                  'required': ['enable'],
+                },
+              },
+              {
+                'name': 'get_logs',
+                'description': 'Capture recent app output — stdout, stderr, and dart:developer log() '
+                    'messages. Returns logs collected within a brief window.',
+                'inputSchema': {
+                  'type': 'object',
+                  'properties': {},
+                },
+              },
             ],
           };
 
@@ -338,6 +530,31 @@ Future<Map<String, Object?>> _handleToolCall(
       'evaluate' => await evaluateTool(
           connection, _requireArg<String>(args, 'expression'), trace),
       'press_back' => await pressBackTool(connection, trace),
+      'toggle_dark_mode' => await toggleDarkModeTool(
+          connection, _requireArg<bool>(args, 'enable'), trace),
+      'toggle_platform' => await togglePlatformTool(
+          connection, _requireArg<String>(args, 'platform'), trace),
+      'get_memory' => await getMemoryTool(connection, trace),
+      'dump_semantics' => await dumpSemanticsTool(connection, trace),
+      'hot_restart' => await hotRestartTool(connection, trace),
+      'get_errors' => await getErrorsTool(connection, trace),
+      'toggle_debug_paint' => await toggleDebugPaintTool(
+          connection, _requireArg<bool>(args, 'enable'), trace),
+      'toggle_repaint_rainbow' => await toggleRepaintRainbowTool(
+          connection, _requireArg<bool>(args, 'enable'), trace),
+      'toggle_slow_animations' => await toggleSlowAnimationsTool(
+          connection, (args['timeDilation'] as num).toDouble(), trace),
+      'toggle_performance_overlay' => await togglePerformanceOverlayTool(
+          connection, _requireArg<bool>(args, 'enable'), trace),
+      'get_render_tree' => await getRenderTreeTool(connection, trace),
+      'get_layer_tree' => await getLayerTreeTool(connection, trace),
+      'get_parent_chain' => await getParentChainTool(
+          connection, _requireArg<String>(args, 'nodeId'), trace),
+      'track_rebuilds' => await trackRebuildsTool(
+          connection, _requireArg<bool>(args, 'enable'), trace),
+      'track_repaints' => await trackRepaintsTool(
+          connection, _requireArg<bool>(args, 'enable'), trace),
+      'get_logs' => await getLogsTool(connection, trace),
       _ => {'error': 'Unknown tool: $tool'},
     };
 

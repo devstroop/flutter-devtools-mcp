@@ -1,0 +1,40 @@
+import '../connection.dart';
+import '../trace.dart';
+
+/// MCP tool: hot_restart
+///
+/// Trigger a full hot restart (reassemble) on the connected Flutter app.
+/// Unlike hot_reload, this resets all state (like restarting the app)
+/// while preserving the currently loaded code.
+Future<Map<String, Object?>> hotRestartTool(
+  FlutterConnection connection,
+  TraceLog trace,
+) async {
+  final startTime = trace.start();
+
+  try {
+    await connection.service.callServiceExtension(
+      'ext.flutter.reassemble',
+      isolateId: connection.isolateId,
+    );
+
+    trace.complete(
+      action: 'hot_restart',
+      startTimeMs: startTime,
+      result: 'success',
+    );
+
+    return {
+      'status': 'success',
+      'message': 'Hot restart completed. App state has been reset.',
+    };
+  } catch (e) {
+    trace.complete(
+      action: 'hot_restart',
+      startTimeMs: startTime,
+      result: 'error',
+      error: e.toString(),
+    );
+    return {'status': 'error', 'error': e.toString()};
+  }
+}
