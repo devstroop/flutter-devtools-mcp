@@ -16,8 +16,8 @@ class FlutterConnection {
   IsolateRef? _mainIsolate;
   String? _rootLibraryId;
 
-  FlutterConnection({required this.vmServiceUrl}) {
-    if (!_isLocalhost(vmServiceUrl)) {
+  FlutterConnection({required String vmServiceUrl}) : vmServiceUrl = _normalizeVmUrl(vmServiceUrl) {
+    if (!_isLocalhost(this.vmServiceUrl)) {
       throw ArgumentError('Only localhost VM Service URLs are allowed');
     }
   }
@@ -126,10 +126,31 @@ class FlutterConnection {
     _log.info('Disconnected');
   }
 
+  /// Normalize a VM Service URL to WebSocket format.
+  ///
+  /// Accepts both `http://` and `ws://` schemes, with or without `/ws` path.
+  /// Flutter's `flutter run` prints an http:// URL — this converts it
+  /// to the WebSocket endpoint the VM Service expects.
+  static String _normalizeVmUrl(String url) {
+    var uri = Uri.tryParse(url);
+    if (uri == null) return url;
+
+    final scheme = uri.scheme;
+    if (scheme == 'http') uri = uri.replace(scheme: 'ws');
+    if (scheme == 'https') uri = uri.replace(scheme: 'wss');
+
+    var path = uri.path;
+    if (!path.endsWith('/ws')) {
+      if (path.endsWith('/')) path = path.substring(0, path.length - 1);
+      uri = uri.replace(path: '$path/ws');
+    }
+
+    return uri.toString();
+  }
+
   static bool _isLocalhost(String url) {
     final uri = Uri.tryParse(url);
     if (uri == null) return false;
-    if (uri.scheme != 'ws' && uri.scheme != 'wss') return false;
     final host = uri.host;
     return host == '127.0.0.1' || host == 'localhost' || host == '::1';
   }
