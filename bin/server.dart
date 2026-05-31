@@ -120,6 +120,21 @@ void main(List<String> args) async {
           result = {
             'tools': [
               {
+                'name': 'connect',
+                'description': 'Connect to a Flutter app. '
+                    'No args = auto-discover via mDNS. '
+                    'Pass vmServiceUrl to connect explicitly.',
+                'inputSchema': {
+                  'type': 'object',
+                  'properties': {
+                    'vmServiceUrl': {
+                      'type': 'string',
+                      'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
+                    },
+                  },
+                },
+              },
+              {
                 'name': 'snapshot',
                 'description': 'Get the current widget tree as LLM-friendly JSON. '
                     'Returns pruned tree with type, label, key, bounds for each node.',
@@ -410,6 +425,37 @@ void main(List<String> args) async {
           }
           final toolArgs = (params['arguments'] as Map<String, Object?>?) ?? {};
 
+          // connect tool manages the connection lifecycle explicitly
+          if (toolName == 'connect') {
+            await connection?.disconnect();
+            connection = null;
+            final vmUrl = toolArgs['vmServiceUrl'] as String?;
+            final newConn = await _connectToFlutter(log, vmUrl);
+            if (newConn == null) {
+              result = {
+                'isError': true,
+                'content': [
+                  {
+                    'type': 'text',
+                    'text': '{"status":"error","error":"Failed to connect to Flutter app. Start one with \'flutter run --debug\'."}',
+                  },
+                ],
+              };
+            } else {
+              connection = newConn;
+              result = {
+                'content': [
+                  {
+                    'type': 'text',
+                    'text': '{"status":"connected","url":"${connection.vmServiceUrl}"}',
+                  },
+                ],
+              };
+            }
+            break;
+          }
+
+          // Auto-connect via mDNS for all other tools
           connection ??= await _connectToFlutter(log, configuredVmUrl);
           if (connection == null) {
             result = {
@@ -417,7 +463,9 @@ void main(List<String> args) async {
               'content': [
                 {
                   'type': 'text',
-                  'text': 'Error: Not connected to a Flutter app. Start one with "flutter run --debug" or set FLUTTER_VM_SERVICE_URL.',
+                  'text': 'Error: Not connected to a Flutter app. '
+                      'Start one with "flutter run --debug" and try again, '
+                      'or call "connect" with a vmServiceUrl.',
                 },
               ],
             };
