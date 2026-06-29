@@ -1,12 +1,14 @@
 import '../connection.dart';
 import '../trace.dart';
+import '../connection_factory.dart';
+import '../mcp_transport.dart';
 
 /// MCP tool: toggle_repaint_rainbow
 ///
 /// Toggle repaint rainbow — applies a rotating color overlay to repainted
 /// regions. Useful for identifying widgets that repaint too frequently.
 /// Take a screenshot after enabling to see repaint activity.
-Future<Map<String, Object?>> toggleRepaintRainbowTool(
+Future<Map<String, Object?>> toggleRepaintRainbowImpl(
   FlutterConnection connection,
   bool enable,
   TraceLog trace,
@@ -45,4 +47,23 @@ Future<Map<String, Object?>> toggleRepaintRainbowTool(
     );
     return {'status': 'error', 'error': e.toString()};
   }
+}
+
+ToolDef createToggleRepaintRainbowTool(ConnectionFactory factory) {
+  return ToolDef(
+    name: 'toggle_repaint_rainbow',
+    description: 'Toggle repaint rainbow — applies a rotating color overlay to repainted regions for identifying widgets that repaint too frequently.',
+    inputSchema: {
+      'type': 'object',
+      'properties': {
+        'enable': {'type': 'boolean', 'description': 'true to show repaint rainbow, false to hide'},
+        'vmServiceUrl': {'type': 'string', 'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)'},
+      },
+      'required': ['enable'],
+    },
+    handler: (args) async {
+      final conn = await factory.getConnection(args['vmServiceUrl']);
+      return toggleRepaintRainbowImpl(conn, args['enable'] as bool, TraceLog());
+    },
+  );
 }

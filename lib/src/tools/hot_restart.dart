@@ -1,4 +1,6 @@
 import '../connection.dart';
+import '../connection_factory.dart';
+import '../mcp_transport.dart';
 import '../trace.dart';
 
 /// MCP tool: hot_restart
@@ -6,7 +8,7 @@ import '../trace.dart';
 /// Trigger a full hot restart (reassemble) on the connected Flutter app.
 /// Unlike hot_reload, this resets all state (like restarting the app)
 /// while preserving the currently loaded code.
-Future<Map<String, Object?>> hotRestartTool(
+Future<Map<String, Object?>> hotRestartImpl(
   FlutterConnection connection,
   TraceLog trace,
 ) async {
@@ -37,4 +39,24 @@ Future<Map<String, Object?>> hotRestartTool(
     );
     return {'status': 'error', 'error': e.toString()};
   }
+}
+
+ToolDef createHotRestartTool(ConnectionFactory factory) {
+  return ToolDef(
+    name: 'hot_restart',
+    description: 'Trigger a full hot restart (reassemble) on the connected Flutter app.',
+    inputSchema: {
+      'type': 'object',
+      'properties': {
+        'vmServiceUrl': {
+          'type': 'string',
+          'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
+        },
+      },
+    },
+    handler: (args) async {
+      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      return hotRestartImpl(conn, TraceLog());
+    },
+  );
 }

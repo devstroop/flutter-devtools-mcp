@@ -1,12 +1,14 @@
 import '../connection.dart';
 import '../trace.dart';
+import '../connection_factory.dart';
+import '../mcp_transport.dart';
 
 /// MCP tool: toggle_dark_mode
 ///
 /// Toggle between light and dark mode using the Flutter brightness override.
 /// Pass [enable] = true for dark mode, false for light mode, or null to
 /// remove the override (revert to system default).
-Future<Map<String, Object?>> toggleDarkModeTool(
+Future<Map<String, Object?>> toggleDarkModeImpl(
   FlutterConnection connection,
   bool? enable,
   TraceLog trace,
@@ -49,4 +51,23 @@ Future<Map<String, Object?>> toggleDarkModeTool(
     );
     return {'status': 'error', 'error': e.toString()};
   }
+}
+
+ToolDef createToggleDarkModeTool(ConnectionFactory factory) {
+  return ToolDef(
+    name: 'toggle_dark_mode',
+    description: 'Toggle between light and dark mode using the Flutter brightness override.',
+    inputSchema: {
+      'type': 'object',
+      'properties': {
+        'enable': {'type': 'boolean', 'description': 'true for dark mode, false for light mode'},
+        'vmServiceUrl': {'type': 'string', 'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)'},
+      },
+      'required': ['enable'],
+    },
+    handler: (args) async {
+      final conn = await factory.getConnection(args['vmServiceUrl']);
+      return toggleDarkModeImpl(conn, args['enable'] as bool, TraceLog());
+    },
+  );
 }

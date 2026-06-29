@@ -1,4 +1,6 @@
 import '../connection.dart';
+import '../connection_factory.dart';
+import '../mcp_transport.dart';
 import '../trace.dart';
 
 /// MCP tool: get_errors
@@ -6,7 +8,7 @@ import '../trace.dart';
 /// Retrieve Flutter framework errors (structured errors) from the running app.
 /// Subscribes to the Extension event stream, requests structured errors,
 /// then collects any error events within a brief window.
-Future<Map<String, Object?>> getErrorsTool(
+Future<Map<String, Object?>> getErrorsImpl(
   FlutterConnection connection,
   TraceLog trace,
 ) async {
@@ -84,4 +86,24 @@ Future<Map<String, Object?>> getErrorsTool(
     );
     return {'status': 'error', 'error': e.toString()};
   }
+}
+
+ToolDef createGetErrorsTool(ConnectionFactory factory) {
+  return ToolDef(
+    name: 'get_errors',
+    description: 'Retrieve Flutter framework errors (structured errors) from the running app.',
+    inputSchema: {
+      'type': 'object',
+      'properties': {
+        'vmServiceUrl': {
+          'type': 'string',
+          'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
+        },
+      },
+    },
+    handler: (args) async {
+      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      return getErrorsImpl(conn, TraceLog());
+    },
+  );
 }

@@ -1,4 +1,6 @@
 import '../connection.dart';
+import '../connection_factory.dart';
+import '../mcp_transport.dart';
 import '../trace.dart';
 
 /// MCP tool: get_layer_tree
@@ -6,7 +8,7 @@ import '../trace.dart';
 /// Dump the compositing layer tree as text. Shows how Flutter composes
 /// render objects into layers for GPU rendering. Useful for diagnosing
 /// compositing issues, saveLayer calls, and opacity/clip layer overhead.
-Future<Map<String, Object?>> getLayerTreeTool(
+Future<Map<String, Object?>> getLayerTreeImpl(
   FlutterConnection connection,
   TraceLog trace,
 ) async {
@@ -39,4 +41,24 @@ Future<Map<String, Object?>> getLayerTreeTool(
     );
     return {'status': 'error', 'error': e.toString()};
   }
+}
+
+ToolDef createGetLayerTreeTool(ConnectionFactory factory) {
+  return ToolDef(
+    name: 'get_layer_tree',
+    description: 'Dump the compositing layer tree as text.',
+    inputSchema: {
+      'type': 'object',
+      'properties': {
+        'vmServiceUrl': {
+          'type': 'string',
+          'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
+        },
+      },
+    },
+    handler: (args) async {
+      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      return getLayerTreeImpl(conn, TraceLog());
+    },
+  );
 }

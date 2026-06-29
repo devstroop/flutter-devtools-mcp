@@ -1,10 +1,12 @@
 import '../connection.dart';
+import '../connection_factory.dart';
+import '../mcp_transport.dart';
 import '../trace.dart';
 
 /// MCP tool: screenshot
 ///
 /// Capture the current screen as base64-encoded PNG.
-Future<Map<String, Object?>> screenshotTool(
+Future<Map<String, Object?>> screenshotImpl(
   FlutterConnection connection,
   TraceLog trace,
 ) async {
@@ -35,4 +37,28 @@ Future<Map<String, Object?>> screenshotTool(
     );
     return {'status': 'error', 'error': e.toString()};
   }
+}
+
+ToolDef createScreenshotTool(ConnectionFactory factory) {
+  return ToolDef(
+    name: 'screenshot',
+    description: 'Capture the current screen as base64-encoded PNG.',
+    inputSchema: {
+      'type': 'object',
+      'properties': {
+        'vmServiceUrl': {
+          'type': 'string',
+          'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
+        },
+      },
+    },
+    handler: (args) async {
+      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      final result = await screenshotImpl(conn, TraceLog());
+      if (result['status'] == 'success') {
+        result['_mcp_content_type'] = 'image';
+      }
+      return result;
+    },
+  );
 }
