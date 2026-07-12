@@ -50,12 +50,9 @@ Add to your editor's MCP config:
 }
 ```
 
-That's it. The server auto-discovers your running Flutter app via mDNS. No environment variables needed.
+That's it. The server auto-discovers your running Flutter app via mDNS on the first tool call. No environment variables needed.
 
-> **Multiple apps running?** Set `FLUTTER_VM_SERVICE_URL` to pin a specific one:
-> ```json
-> "env": { "FLUTTER_VM_SERVICE_URL": "ws://127.0.0.1:XXXXX/YYYY=/ws" }
-> ```
+> **Multiple apps running?** Call `connect(vmServiceUrl: "ws://...")` to pin a specific one. Or call `connect()` with no args to re-scan via mDNS.
 
 ## Usage
 
@@ -66,7 +63,8 @@ That's it. The server auto-discovers your running Flutter app via mDNS. No envir
 ## Tools
 
 | Tool | What it does |
-|---|---|
+|---|---|---|
+| `connect` | Connect/reconnect to a Flutter app (no args = mDNS, or pass a URL) |
 | `snapshot` | Widget tree as LLM-friendly JSON |
 | `inspect` | Detailed properties of a widget node |
 | `tap` | Tap a widget by selector |
