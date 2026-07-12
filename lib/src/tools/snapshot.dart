@@ -26,12 +26,13 @@ ToolDef createSnapshotTool(ConnectionFactory factory) {
       'properties': {
         'vmServiceUrl': {
           'type': 'string',
-          'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
+          'description':
+              'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
         },
       },
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl']);
+      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
       return snapshotImpl(conn);
     },
   );

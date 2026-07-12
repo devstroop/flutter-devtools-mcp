@@ -40,7 +40,8 @@ Future<Map<String, Object?>> toggleDarkModeImpl(
     return {
       'status': 'success',
       'darkMode': current?.contains('dark') ?? enable ?? false,
-      'brightness': current ?? (enable == true ? 'Brightness.dark' : 'Brightness.light'),
+      'brightness':
+          current ?? (enable == true ? 'Brightness.dark' : 'Brightness.light'),
     };
   } catch (e) {
     trace.complete(
@@ -56,17 +57,25 @@ Future<Map<String, Object?>> toggleDarkModeImpl(
 ToolDef createToggleDarkModeTool(ConnectionFactory factory) {
   return ToolDef(
     name: 'toggle_dark_mode',
-    description: 'Toggle between light and dark mode using the Flutter brightness override.',
+    description:
+        'Toggle between light and dark mode using the Flutter brightness override.',
     inputSchema: {
       'type': 'object',
       'properties': {
-        'enable': {'type': 'boolean', 'description': 'true for dark mode, false for light mode'},
-        'vmServiceUrl': {'type': 'string', 'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)'},
+        'enable': {
+          'type': 'boolean',
+          'description': 'true for dark mode, false for light mode'
+        },
+        'vmServiceUrl': {
+          'type': 'string',
+          'description':
+              'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)'
+        },
       },
       'required': ['enable'],
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl']);
+      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
       return toggleDarkModeImpl(conn, args['enable'] as bool, TraceLog());
     },
   );

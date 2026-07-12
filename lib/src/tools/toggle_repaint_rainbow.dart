@@ -52,17 +52,25 @@ Future<Map<String, Object?>> toggleRepaintRainbowImpl(
 ToolDef createToggleRepaintRainbowTool(ConnectionFactory factory) {
   return ToolDef(
     name: 'toggle_repaint_rainbow',
-    description: 'Toggle repaint rainbow — applies a rotating color overlay to repainted regions for identifying widgets that repaint too frequently.',
+    description:
+        'Toggle repaint rainbow — applies a rotating color overlay to repainted regions for identifying widgets that repaint too frequently.',
     inputSchema: {
       'type': 'object',
       'properties': {
-        'enable': {'type': 'boolean', 'description': 'true to show repaint rainbow, false to hide'},
-        'vmServiceUrl': {'type': 'string', 'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)'},
+        'enable': {
+          'type': 'boolean',
+          'description': 'true to show repaint rainbow, false to hide'
+        },
+        'vmServiceUrl': {
+          'type': 'string',
+          'description':
+              'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)'
+        },
       },
       'required': ['enable'],
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl']);
+      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
       return toggleRepaintRainbowImpl(conn, args['enable'] as bool, TraceLog());
     },
   );

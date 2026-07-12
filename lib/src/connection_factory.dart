@@ -27,7 +27,6 @@ final _log = Logger('ConnectionFactory');
 /// ```
 class ConnectionFactory {
   final Map<String, FlutterConnection> _cache = {};
-  final List<FlutterConnection> _pendingConnects = [];
 
   /// Get or create a cached connection for [url].
   ///
@@ -79,7 +78,8 @@ class ConnectionFactory {
   /// Returns the WebSocket URL of the first discovered app, or null if
   /// no app was found within the mDNS scan timeout.
   Future<String?> _discoverFirst() async {
-    _log.info('No vmServiceUrl provided — scanning for Flutter apps via mDNS...');
+    _log.info(
+        'No vmServiceUrl provided — scanning for Flutter apps via mDNS...');
     final services = await discoverFlutterVmServices();
 
     if (services.isEmpty) {

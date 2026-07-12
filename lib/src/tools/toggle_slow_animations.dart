@@ -66,18 +66,27 @@ Future<Map<String, Object?>> toggleSlowAnimationsImpl(
 ToolDef createToggleSlowAnimationsTool(ConnectionFactory factory) {
   return ToolDef(
     name: 'toggle_slow_animations',
-    description: 'Slow down or restore animation speed. 1.0 = normal, 2.0 = 2× slower, 5.0 = 5× slower.',
+    description:
+        'Slow down or restore animation speed. 1.0 = normal, 2.0 = 2× slower, 5.0 = 5× slower.',
     inputSchema: {
       'type': 'object',
       'properties': {
-        'timeDilation': {'type': 'number', 'description': 'Time dilation factor (1.0 = normal speed)'},
-        'vmServiceUrl': {'type': 'string', 'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)'},
+        'timeDilation': {
+          'type': 'number',
+          'description': 'Time dilation factor (1.0 = normal speed)'
+        },
+        'vmServiceUrl': {
+          'type': 'string',
+          'description':
+              'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)'
+        },
       },
       'required': ['timeDilation'],
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl']);
-      return toggleSlowAnimationsImpl(conn, (args['timeDilation'] as num).toDouble(), TraceLog());
+      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      return toggleSlowAnimationsImpl(
+          conn, (args['timeDilation'] as num).toDouble(), TraceLog());
     },
   );
 }

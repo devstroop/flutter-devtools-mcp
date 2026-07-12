@@ -49,17 +49,25 @@ Future<Map<String, Object?>> trackRepaintsImpl(
 ToolDef createTrackRepaintsTool(ConnectionFactory factory) {
   return ToolDef(
     name: 'track_repaints',
-    description: 'Toggle repaint tracking. When enabled, Flutter shows which render objects are repainting.',
+    description:
+        'Toggle repaint tracking. When enabled, Flutter shows which render objects are repainting.',
     inputSchema: {
       'type': 'object',
       'properties': {
-        'enable': {'type': 'boolean', 'description': 'true to enable repaint tracking, false to disable'},
-        'vmServiceUrl': {'type': 'string', 'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)'},
+        'enable': {
+          'type': 'boolean',
+          'description': 'true to enable repaint tracking, false to disable'
+        },
+        'vmServiceUrl': {
+          'type': 'string',
+          'description':
+              'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)'
+        },
       },
       'required': ['enable'],
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl']);
+      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
       return trackRepaintsImpl(conn, args['enable'] as bool, TraceLog());
     },
   );

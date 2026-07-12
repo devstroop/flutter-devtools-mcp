@@ -52,17 +52,25 @@ Future<Map<String, Object?>> toggleDebugPaintImpl(
 ToolDef createToggleDebugPaintTool(ConnectionFactory factory) {
   return ToolDef(
     name: 'toggle_debug_paint',
-    description: 'Toggle debug paint overlay — shows widget boundaries, padding, and alignment guides.',
+    description:
+        'Toggle debug paint overlay — shows widget boundaries, padding, and alignment guides.',
     inputSchema: {
       'type': 'object',
       'properties': {
-        'enable': {'type': 'boolean', 'description': 'true to show debug paint, false to hide'},
-        'vmServiceUrl': {'type': 'string', 'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)'},
+        'enable': {
+          'type': 'boolean',
+          'description': 'true to show debug paint, false to hide'
+        },
+        'vmServiceUrl': {
+          'type': 'string',
+          'description':
+              'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)'
+        },
       },
       'required': ['enable'],
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl']);
+      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
       return toggleDebugPaintImpl(conn, args['enable'] as bool, TraceLog());
     },
   );

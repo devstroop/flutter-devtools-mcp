@@ -52,18 +52,27 @@ Future<Map<String, Object?>> togglePerformanceOverlayImpl(
 ToolDef createTogglePerformanceOverlayTool(ConnectionFactory factory) {
   return ToolDef(
     name: 'toggle_performance_overlay',
-    description: 'Toggle the Flutter performance overlay — shows real-time frame timing graphs (UI thread and raster thread).',
+    description:
+        'Toggle the Flutter performance overlay — shows real-time frame timing graphs (UI thread and raster thread).',
     inputSchema: {
       'type': 'object',
       'properties': {
-        'enable': {'type': 'boolean', 'description': 'true to show performance overlay, false to hide'},
-        'vmServiceUrl': {'type': 'string', 'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)'},
+        'enable': {
+          'type': 'boolean',
+          'description': 'true to show performance overlay, false to hide'
+        },
+        'vmServiceUrl': {
+          'type': 'string',
+          'description':
+              'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)'
+        },
       },
       'required': ['enable'],
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl']);
-      return togglePerformanceOverlayImpl(conn, args['enable'] as bool, TraceLog());
+      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      return togglePerformanceOverlayImpl(
+          conn, args['enable'] as bool, TraceLog());
     },
   );
 }

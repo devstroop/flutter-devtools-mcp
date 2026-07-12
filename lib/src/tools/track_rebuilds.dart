@@ -50,17 +50,25 @@ Future<Map<String, Object?>> trackRebuildsImpl(
 ToolDef createTrackRebuildsTool(ConnectionFactory factory) {
   return ToolDef(
     name: 'track_rebuilds',
-    description: 'Toggle tracking of widget rebuilds. When enabled, Flutter annotates widgets with rebuild counts.',
+    description:
+        'Toggle tracking of widget rebuilds. When enabled, Flutter annotates widgets with rebuild counts.',
     inputSchema: {
       'type': 'object',
       'properties': {
-        'enable': {'type': 'boolean', 'description': 'true to enable rebuild tracking, false to disable'},
-        'vmServiceUrl': {'type': 'string', 'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)'},
+        'enable': {
+          'type': 'boolean',
+          'description': 'true to enable rebuild tracking, false to disable'
+        },
+        'vmServiceUrl': {
+          'type': 'string',
+          'description':
+              'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)'
+        },
       },
       'required': ['enable'],
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl']);
+      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
       return trackRebuildsImpl(conn, args['enable'] as bool, TraceLog());
     },
   );
