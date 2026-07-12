@@ -28,6 +28,9 @@ final _log = Logger('ConnectionFactory');
 class ConnectionFactory {
   final Map<String, FlutterConnection> _cache = {};
 
+  /// True if there is at least one active (cached) connection.
+  bool get hasConnection => _cache.isNotEmpty;
+
   /// Get or create a cached connection for [url].
   ///
   /// If [url] is null, auto-discovers a Flutter app via mDNS and uses

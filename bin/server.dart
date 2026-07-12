@@ -28,6 +28,12 @@ import 'package:flutter_devtools_mcp/src/tools/get_layer_tree.dart';
 import 'package:flutter_devtools_mcp/src/tools/get_parent_chain.dart';
 import 'package:flutter_devtools_mcp/src/tools/track_rebuilds.dart';
 import 'package:flutter_devtools_mcp/src/tools/track_repaints.dart';
+import 'package:flutter_devtools_mcp/src/tools/connect.dart';
+import 'package:flutter_devtools_mcp/src/tools/discover.dart';
+import 'package:flutter_devtools_mcp/src/tools/status.dart';
+import 'package:flutter_devtools_mcp/src/tools/launch.dart';
+import 'package:flutter_devtools_mcp/src/tools/launch_status.dart';
+import 'package:flutter_devtools_mcp/src/tools/stop_app.dart';
 
 /// MCP server for Flutter UI automation via DevTools VM Service extensions.
 ///
@@ -51,8 +57,16 @@ void main() {
 
   McpServer(
     name: 'flutter_devtools_mcp',
-    version: '0.2.0',
+    version: '0.3.0',
     tools: [
+      // Management / orchestration
+      createConnectTool(factory),
+      createDiscoverTool(factory),
+      createStatusTool(factory),
+      createLaunchTool(factory),
+      createLaunchStatusTool(factory),
+      createStopAppTool(factory),
+
       // Inspection
       createSnapshotTool(factory),
       createInspectTool(factory),
