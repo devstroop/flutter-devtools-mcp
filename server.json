@@ -1,13 +1,21 @@
 {
   "name": "flutter_devtools_mcp",
-  "version": "0.1.0",
-  "description": "MCP server for Flutter UI automation via DevTools VM Service extensions",
+  "version": "0.2.0",
+  "description": "Robust MCP server for Flutter DevTools automation. Connects via VM Service WebSocket with mDNS auto-discovery.",
   "command": "bin/flutter_devtools_mcp_server",
   "args": [],
   "tools": [
     {
+      "name": "discover",
+      "description": "Scan for running Flutter debug apps via mDNS. Returns detected VM Service URLs."
+    },
+    {
+      "name": "status",
+      "description": "Check connection status and detect available Flutter debug apps."
+    },
+    {
       "name": "connect",
-      "description": "Connect to a Flutter app. No args = auto-discover via mDNS. Pass vmServiceUrl to connect explicitly.",
+      "description": "Connect to a Flutter debug app. No args = auto-discover via mDNS. Pass vmServiceUrl to connect explicitly.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -20,12 +28,12 @@
     },
     {
       "name": "snapshot",
-      "description": "Get the current widget tree as LLM-friendly JSON.",
+      "description": "Requires: connect first. Get the current widget tree as LLM-friendly JSON.",
       "inputSchema": { "type": "object", "properties": {} }
     },
     {
       "name": "inspect",
-      "description": "Get detailed properties of a specific widget node.",
+      "description": "Requires: connect first. Get detailed properties of a specific widget node.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -36,7 +44,7 @@
     },
     {
       "name": "tap",
-      "description": "Tap a widget. Selector formats: semantics:Label, key:value_key, text:Content, index:Type:N",
+      "description": "Requires: connect first. Tap a widget by selector (semantics:, key:, text:, index:).",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -47,7 +55,7 @@
     },
     {
       "name": "type_text",
-      "description": "Focus a text field by selector and enter text.",
+      "description": "Requires: connect first. Focus a text field by selector and enter text.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -59,7 +67,7 @@
     },
     {
       "name": "scroll",
-      "description": "Scroll a scrollable widget in a direction.",
+      "description": "Requires: connect first. Scroll a scrollable widget in a direction.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -72,17 +80,17 @@
     },
     {
       "name": "screenshot",
-      "description": "Capture the current screen as PNG.",
+      "description": "Requires: connect first. Capture the current screen as PNG.",
       "inputSchema": { "type": "object", "properties": {} }
     },
     {
       "name": "hot_reload",
-      "description": "Trigger hot reload on the connected Flutter app.",
+      "description": "Requires: connect first. Trigger hot reload on the connected Flutter app.",
       "inputSchema": { "type": "object", "properties": {} }
     },
     {
       "name": "evaluate",
-      "description": "Evaluate a Dart expression in the running app.",
+      "description": "Requires: connect first. Evaluate a Dart expression in the running app.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -93,8 +101,72 @@
     },
     {
       "name": "press_back",
-      "description": "Press the system back button / pop the top route.",
+      "description": "Requires: connect first. Press the system back button / pop the top route.",
       "inputSchema": { "type": "object", "properties": {} }
+    },
+    {
+      "name": "toggle_dark_mode",
+      "description": "Requires: connect first. Toggle dark/light mode."
+    },
+    {
+      "name": "toggle_platform",
+      "description": "Requires: connect first. Override the target platform (android, ios, ...)."
+    },
+    {
+      "name": "get_memory",
+      "description": "Requires: connect first. Get memory usage of the Flutter app."
+    },
+    {
+      "name": "dump_semantics",
+      "description": "Requires: connect first. Dump the accessibility/semantics tree."
+    },
+    {
+      "name": "hot_restart",
+      "description": "Requires: connect first. Full hot restart — resets all app state."
+    },
+    {
+      "name": "get_errors",
+      "description": "Requires: connect first. Get Flutter framework errors."
+    },
+    {
+      "name": "toggle_debug_paint",
+      "description": "Requires: connect first. Toggle widget boundary overlay."
+    },
+    {
+      "name": "toggle_repaint_rainbow",
+      "description": "Requires: connect first. Toggle repaint rainbow overlay."
+    },
+    {
+      "name": "toggle_slow_animations",
+      "description": "Requires: connect first. Slow down or restore animation speed."
+    },
+    {
+      "name": "toggle_performance_overlay",
+      "description": "Requires: connect first. Toggle frame timing graphs overlay."
+    },
+    {
+      "name": "get_render_tree",
+      "description": "Requires: connect first. Dump the render object tree as text."
+    },
+    {
+      "name": "get_layer_tree",
+      "description": "Requires: connect first. Dump the compositing layer tree."
+    },
+    {
+      "name": "get_parent_chain",
+      "description": "Requires: connect first. Get parent chain for a node ID."
+    },
+    {
+      "name": "track_rebuilds",
+      "description": "Requires: connect first. Toggle widget rebuild tracking."
+    },
+    {
+      "name": "track_repaints",
+      "description": "Requires: connect first. Toggle repaint tracking."
+    },
+    {
+      "name": "get_logs",
+      "description": "Requires: connect first. Capture recent app output logs."
     }
   ]
 }
