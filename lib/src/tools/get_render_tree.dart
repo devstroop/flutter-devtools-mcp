@@ -1,4 +1,6 @@
 import '../connection.dart';
+import '../connection_factory.dart';
+import '../mcp_transport.dart';
 import '../trace.dart';
 
 /// MCP tool: get_render_tree
@@ -6,7 +8,7 @@ import '../trace.dart';
 /// Dump the full render object tree as text. Shows the RenderObject hierarchy
 /// with layout constraints, sizes, and paint information. Complements the
 /// widget tree snapshot with lower-level rendering details.
-Future<Map<String, Object?>> getRenderTreeTool(
+Future<Map<String, Object?>> getRenderTreeImpl(
   FlutterConnection connection,
   TraceLog trace,
 ) async {
@@ -39,4 +41,24 @@ Future<Map<String, Object?>> getRenderTreeTool(
     );
     return {'status': 'error', 'error': e.toString()};
   }
+}
+
+ToolDef createGetRenderTreeTool(ConnectionFactory factory) {
+  return ToolDef(
+    name: 'get_render_tree',
+    description: 'Dump the full render object tree as text.',
+    inputSchema: {
+      'type': 'object',
+      'properties': {
+        'vmServiceUrl': {
+          'type': 'string',
+          'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
+        },
+      },
+    },
+    handler: (args) async {
+      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      return getRenderTreeImpl(conn, TraceLog());
+    },
+  );
 }

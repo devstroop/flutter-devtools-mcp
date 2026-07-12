@@ -1,14 +1,16 @@
 import 'dart:convert';
 
 import '../connection.dart';
+import '../connection_factory.dart';
+import '../mcp_transport.dart';
 import '../trace.dart';
 
-/// MCP tool: get_parent_chain
+/// MCP tool impl: get_parent_chain
 ///
 /// Get the parent chain (ancestors) of a widget node, from the node up to
 /// the root. Useful for understanding where a widget sits in the tree
 /// hierarchy and what constraints/themes wrap it.
-Future<Map<String, Object?>> getParentChainTool(
+Future<Map<String, Object?>> getParentChainImpl(
   FlutterConnection connection,
   String nodeId,
   TraceLog trace,
@@ -81,4 +83,26 @@ Future<Map<String, Object?>> getParentChainTool(
     );
     return {'status': 'error', 'error': e.toString()};
   }
+}
+
+ToolDef createGetParentChainTool(ConnectionFactory factory) {
+  return ToolDef(
+    name: 'get_parent_chain',
+    description: 'Get the parent chain (ancestors) of a widget node.',
+    inputSchema: {
+      'type': 'object',
+      'properties': {
+        'nodeId': {'type': 'string', 'description': 'Node ID from snapshot'},
+        'vmServiceUrl': {
+          'type': 'string',
+          'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
+        },
+      },
+      'required': ['nodeId'],
+    },
+    handler: (args) async {
+      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      return getParentChainImpl(conn, args['nodeId'] as String, TraceLog());
+    },
+  );
 }

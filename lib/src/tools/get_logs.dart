@@ -1,4 +1,6 @@
 import '../connection.dart';
+import '../connection_factory.dart';
+import '../mcp_transport.dart';
 import '../trace.dart';
 
 /// MCP tool: get_logs
@@ -7,7 +9,7 @@ import '../trace.dart';
 /// Subscribes to the Stdout and Stderr VM service streams, collects messages
 /// within a brief window, and returns them. Useful for reading print()
 /// output, debug messages, and runtime warnings.
-Future<Map<String, Object?>> getLogsTool(
+Future<Map<String, Object?>> getLogsImpl(
   FlutterConnection connection,
   TraceLog trace,
 ) async {
@@ -105,4 +107,24 @@ Future<Map<String, Object?>> getLogsTool(
     );
     return {'status': 'error', 'error': e.toString()};
   }
+}
+
+ToolDef createGetLogsTool(ConnectionFactory factory) {
+  return ToolDef(
+    name: 'get_logs',
+    description: 'Capture recent app output (stdout/stderr) from the running Flutter app.',
+    inputSchema: {
+      'type': 'object',
+      'properties': {
+        'vmServiceUrl': {
+          'type': 'string',
+          'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
+        },
+      },
+    },
+    handler: (args) async {
+      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      return getLogsImpl(conn, TraceLog());
+    },
+  );
 }

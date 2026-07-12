@@ -117,7 +117,7 @@ void main() {
 
   group('screenshot', () {
     test('returns valid PNG data', () async {
-      final result = await screenshotTool(connection, trace);
+      final result = await screenshotImpl(connection, trace);
       expect(result['status'], 'success');
       expect(result['format'], 'png');
       expect(result['encoding'], 'base64');
@@ -144,7 +144,7 @@ void main() {
 
   group('hot_reload', () {
     test('triggers reload successfully', () async {
-      final result = await hotReloadTool(connection, trace);
+      final result = await hotReloadImpl(connection, trace);
       expect(result['status'], 'success');
     });
   });
@@ -152,7 +152,7 @@ void main() {
   group('trace', () {
     test('records actions', () async {
       final localTrace = TraceLog();
-      await screenshotTool(connection, localTrace);
+      await screenshotImpl(connection, localTrace);
       expect(localTrace.entries, hasLength(1));
       expect(localTrace.entries.first.action, 'screenshot');
       expect(localTrace.entries.first.result, 'success');
@@ -194,7 +194,7 @@ void main() {
 
   group('press_back', () {
     test('returns success even when no route to pop', () async {
-      final result = await pressBackTool(connection, trace);
+      final result = await pressBackImpl(connection, trace);
       expect(result['status'], 'success');
     });
   });

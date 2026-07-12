@@ -1,11 +1,13 @@
 import '../connection.dart';
+import '../connection_factory.dart';
+import '../mcp_transport.dart';
 import '../trace.dart';
 
-/// MCP tool: evaluate
+/// MCP tool impl: evaluate
 ///
 /// Evaluate a Dart expression in the running app's main isolate.
 /// Returns the string representation of the result.
-Future<Map<String, Object?>> evaluateTool(
+Future<Map<String, Object?>> evaluateImpl(
   FlutterConnection connection,
   String expression,
   TraceLog trace,
@@ -37,4 +39,26 @@ Future<Map<String, Object?>> evaluateTool(
     );
     return {'status': 'error', 'error': e.toString()};
   }
+}
+
+ToolDef createEvaluateTool(ConnectionFactory factory) {
+  return ToolDef(
+    name: 'evaluate',
+    description: 'Evaluate a Dart expression in the running app.',
+    inputSchema: {
+      'type': 'object',
+      'properties': {
+        'expression': {'type': 'string', 'description': 'Dart expression to evaluate'},
+        'vmServiceUrl': {
+          'type': 'string',
+          'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
+        },
+      },
+      'required': ['expression'],
+    },
+    handler: (args) async {
+      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      return evaluateImpl(conn, args['expression'] as String, TraceLog());
+    },
+  );
 }

@@ -1,100 +1,32 @@
 {
   "name": "flutter_devtools_mcp",
-  "version": "0.1.0",
-  "description": "MCP server for Flutter UI automation via DevTools VM Service extensions",
-  "command": "bin/flutter_devtools_mcp_server",
-  "args": [],
+  "version": "0.2.0",
+  "description": "Zero-config MCP server for Flutter UI automation. Connects to Flutter debug apps via VM Service WebSocket — per-call vmServiceUrl or mDNS auto-discovery.",
   "tools": [
-    {
-      "name": "connect",
-      "description": "Connect to a Flutter app. No args = auto-discover via mDNS. Pass vmServiceUrl to connect explicitly.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "vmServiceUrl": {
-            "type": "string",
-            "description": "VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)"
-          }
-        }
-      }
-    },
-    {
-      "name": "snapshot",
-      "description": "Get the current widget tree as LLM-friendly JSON.",
-      "inputSchema": { "type": "object", "properties": {} }
-    },
-    {
-      "name": "inspect",
-      "description": "Get detailed properties of a specific widget node.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "nodeId": { "type": "string", "description": "Node ID from snapshot" }
-        },
-        "required": ["nodeId"]
-      }
-    },
-    {
-      "name": "tap",
-      "description": "Tap a widget. Selector formats: semantics:Label, key:value_key, text:Content, index:Type:N",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "selector": { "type": "string", "description": "Widget selector" }
-        },
-        "required": ["selector"]
-      }
-    },
-    {
-      "name": "type_text",
-      "description": "Focus a text field by selector and enter text.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "selector": { "type": "string", "description": "Text field selector" },
-          "text": { "type": "string", "description": "Text to enter" }
-        },
-        "required": ["selector", "text"]
-      }
-    },
-    {
-      "name": "scroll",
-      "description": "Scroll a scrollable widget in a direction.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "selector": { "type": "string", "description": "Scrollable widget selector" },
-          "direction": { "type": "string", "enum": ["up", "down", "left", "right"], "description": "Scroll direction" },
-          "amount": { "type": "number", "description": "Scroll amount in pixels (default: 300)" }
-        },
-        "required": ["selector", "direction"]
-      }
-    },
-    {
-      "name": "screenshot",
-      "description": "Capture the current screen as PNG.",
-      "inputSchema": { "type": "object", "properties": {} }
-    },
-    {
-      "name": "hot_reload",
-      "description": "Trigger hot reload on the connected Flutter app.",
-      "inputSchema": { "type": "object", "properties": {} }
-    },
-    {
-      "name": "evaluate",
-      "description": "Evaluate a Dart expression in the running app.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "expression": { "type": "string", "description": "Dart expression" }
-        },
-        "required": ["expression"]
-      }
-    },
-    {
-      "name": "press_back",
-      "description": "Press the system back button / pop the top route.",
-      "inputSchema": { "type": "object", "properties": {} }
-    }
+    {"name": "snapshot", "description": "Get current widget tree as LLM-friendly JSON"},
+    {"name": "inspect", "description": "Get detailed properties of a specific widget node"},
+    {"name": "get_parent_chain", "description": "Get ancestor chain from a node up to root widget"},
+    {"name": "get_render_tree", "description": "Dump the render object tree as text"},
+    {"name": "get_layer_tree", "description": "Dump the compositing layer tree as text"},
+    {"name": "dump_semantics", "description": "Dump the accessibility/semantics tree"},
+    {"name": "tap", "description": "Tap a widget by selector (semantics:, key:, text:, index:)"},
+    {"name": "type_text", "description": "Focus a text field and enter text"},
+    {"name": "scroll", "description": "Scroll a scrollable widget"},
+    {"name": "press_back", "description": "Press system back / pop top route"},
+    {"name": "screenshot", "description": "Capture screen as PNG (MCP image)"},
+    {"name": "hot_reload", "description": "Trigger hot reload"},
+    {"name": "hot_restart", "description": "Full hot restart (resets state)"},
+    {"name": "evaluate", "description": "Evaluate Dart expression in running app"},
+    {"name": "get_errors", "description": "Get Flutter framework errors"},
+    {"name": "get_logs", "description": "Capture recent app output (stdout, stderr, log())"},
+    {"name": "get_memory", "description": "Get memory usage (heap, external)"},
+    {"name": "toggle_dark_mode", "description": "Toggle dark/light mode"},
+    {"name": "toggle_platform", "description": "Override target platform (android, ios, ...)"},
+    {"name": "toggle_debug_paint", "description": "Toggle widget boundary overlay"},
+    {"name": "toggle_repaint_rainbow", "description": "Toggle repaint rainbow overlay"},
+    {"name": "toggle_slow_animations", "description": "Slow down/restore animation speed"},
+    {"name": "toggle_performance_overlay", "description": "Toggle frame timing graphs"},
+    {"name": "track_rebuilds", "description": "Toggle widget rebuild tracking"},
+    {"name": "track_repaints", "description": "Toggle repaint tracking"}
   ]
 }
