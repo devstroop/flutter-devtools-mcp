@@ -32,6 +32,12 @@ import 'package:flutter_devtools_mcp/src/tools/track_rebuilds.dart';
 import 'package:flutter_devtools_mcp/src/tools/track_repaints.dart';
 import 'package:flutter_devtools_mcp/src/tools/get_logs.dart';
 
+// -- Launched app process tracking (module-level for access by helpers)
+Process? _launchedProcess;
+String? _launchedProjectPath;
+final _launchLog = <String>[];
+bool _launchedProcessAlive = false;
+
 /// MCP server entry point.
 ///
 /// Communicates via stdio JSON-RPC (MCP transport).
@@ -107,6 +113,7 @@ void main(List<String> args) async {
 
         case 'exit':
           log.info('Exit requested');
+          _killLaunchedProcess();
           await connection?.disconnect();
           exit(0);
 
@@ -122,6 +129,60 @@ void main(List<String> args) async {
         case 'tools/list':
           result = {
             'tools': [
+              {
+                'name': 'launch',
+                'description':
+                    'Launch a Flutter app in debug mode from a project directory. '
+                        'Starts flutter run as a subprocess, waits for the VM Service URL, '
+                        'then auto-connects. Returns the URL once the app is ready. '
+                        'Use stop_app to kill the launched process.',
+                'inputSchema': {
+                  'type': 'object',
+                  'properties': {
+                    'projectPath': {
+                      'type': 'string',
+                      'description':
+                          'Absolute path to the Flutter project directory (containing pubspec.yaml)',
+                    },
+                    'deviceId': {
+                      'type': 'string',
+                      'description':
+                          'Target device ID (e.g. macos, ios, android, chrome). Defaults to macos.',
+                    },
+                    'target': {
+                      'type': 'string',
+                      'description':
+                          'Target file to run (e.g. lib/main.dart). Defaults to lib/main.dart.',
+                    },
+                    'launchTimeout': {
+                      'type': 'number',
+                      'description':
+                          'Maximum seconds to wait for the app to start. Default: 120.',
+                    },
+                  },
+                  'required': ['projectPath'],
+                },
+              },
+              {
+                'name': 'launch_status',
+                'description':
+                    'Check the status of the most recently launched app process. '
+                        'Returns whether the process is alive, the VM Service URL if resolved, '
+                        'and recent stdout/stderr output.',
+                'inputSchema': {
+                  'type': 'object',
+                  'properties': {},
+                },
+              },
+              {
+                'name': 'stop_app',
+                'description': 'Stop a running app launched via the launch tool. '
+                    'Kills the flutter run process and disconnects from the VM Service.',
+                'inputSchema': {
+                  'type': 'object',
+                  'properties': {},
+                },
+              },
               {
                 'name': 'discover',
                 'description': 'Scan for running Flutter debug apps via mDNS. '
@@ -523,6 +584,234 @@ void main(List<String> args) async {
           }
           final toolArgs = (params['arguments'] as Map<String, Object?>?) ?? {};
 
+          // launch tool — start flutter run and wait for VM Service URL
+          if (toolName == 'launch') {
+            final projectPath = _requireArg<String>(toolArgs, 'projectPath');
+            final deviceId = toolArgs['deviceId'] as String? ?? 'macos';
+            final target = toolArgs['target'] as String? ?? 'lib/main.dart';
+            final launchTimeoutSec =
+                (toolArgs['launchTimeout'] as num?)?.toInt() ?? 120;
+
+            // Kill any previously running launch
+            if (_launchedProcess != null) {
+              _killLaunchedProcess();
+            }
+            _launchLog.clear();
+
+            // Validate project directory
+            final projectDir = Directory(projectPath);
+            if (!projectDir.existsSync()) {
+              result = {
+                'isError': true,
+                'content': [
+                  {
+                    'type': 'text',
+                    'text': 'Error: Project directory not found: $projectPath',
+                  },
+                ],
+              };
+              break;
+            }
+            final pubspec = File('$projectPath/pubspec.yaml');
+            if (!pubspec.existsSync()) {
+              result = {
+                'isError': true,
+                'content': [
+                  {
+                    'type': 'text',
+                    'text':
+                        'Error: No pubspec.yaml found in $projectPath. Is this a Flutter project?',
+                  },
+                ],
+              };
+              break;
+            }
+
+            _launchedProjectPath = projectPath;
+            _launchLog
+                .add('Launching: flutter run -d $deviceId --debug $target');
+
+            try {
+              final process = await Process.start(
+                'flutter',
+                [
+                  'run',
+                  '-d',
+                  deviceId,
+                  '--debug',
+                  target,
+                ],
+                workingDirectory: projectPath,
+                runInShell: true,
+              );
+
+              _launchedProcess = process;
+              _launchedProcessAlive = true;
+              process.exitCode.then((_) => _launchedProcessAlive = false);
+
+              // Collect stdout/stderr in background
+              final stdoutLines = <String>[];
+              final stderrLines = <String>[];
+              process.stdout
+                  .transform(utf8.decoder)
+                  .transform(const LineSplitter())
+                  .listen((line) {
+                stdoutLines.add(line);
+                if (stdoutLines.length > 200) stdoutLines.removeAt(0);
+              });
+              process.stderr
+                  .transform(utf8.decoder)
+                  .transform(const LineSplitter())
+                  .listen((line) {
+                stderrLines.add(line);
+                if (stderrLines.length > 200) stderrLines.removeAt(0);
+              });
+
+              // Wait for VM Service URL with timeout
+              final deadline =
+                  DateTime.now().add(Duration(seconds: launchTimeoutSec));
+              String? vmUrl;
+
+              while (DateTime.now().isBefore(deadline)) {
+                // Check if process exited
+                if (!_launchedProcessAlive) {
+                  final code = await process.exitCode;
+                  _launchLog.add('Process exited with code $code');
+                  break;
+                }
+
+                // Scan stdout for VM Service URL
+                for (final line in stdoutLines) {
+                  final match = _vmServiceUrlPattern.firstMatch(line);
+                  if (match != null) {
+                    vmUrl = match.group(0)!;
+                    _launchLog.add('VM Service URL found: $vmUrl');
+                    break;
+                  }
+                }
+                if (vmUrl != null) break;
+
+                await Future.delayed(const Duration(milliseconds: 500));
+              }
+
+              // Capture recent output for the response
+              final recentStdout = stdoutLines
+                  .join('\n')
+                  .split('\n')
+                  .where((l) => l.trim().isNotEmpty)
+                  .join('\n');
+              _launchLog.addAll(
+                  stdoutLines.where((l) => l.trim().isNotEmpty).take(10));
+
+              if (vmUrl == null) {
+                result = {
+                  'isError': true,
+                  'content': [
+                    {
+                      'type': 'text',
+                      'text':
+                          '{"status":"error","error":"Timed out waiting for VM Service URL after ${launchTimeoutSec}s.","output":${json.encode(recentStdout.split('\n').where((l) => l.trim().isNotEmpty).take(20).join('\n'))}}',
+                    },
+                  ],
+                };
+                break;
+              }
+
+              // Auto-connect to the launched app
+              await connection?.disconnect();
+              connection = null;
+              final newConn = await _connectToFlutter(log, vmUrl);
+              if (newConn == null) {
+                result = {
+                  'isError': true,
+                  'content': [
+                    {
+                      'type': 'text',
+                      'text':
+                          '{"status":"error","error":"App launched but failed to connect to VM Service at $vmUrl"}',
+                    },
+                  ],
+                };
+              } else {
+                connection = newConn;
+                result = {
+                  'content': [
+                    {
+                      'type': 'text',
+                      'text':
+                          '{"status":"launched","url":"$vmUrl","pid":${process.pid},"connected":true}',
+                    },
+                  ],
+                };
+              }
+            } catch (e) {
+              _launchedProcess = null;
+              result = {
+                'isError': true,
+                'content': [
+                  {
+                    'type': 'text',
+                    'text': 'Error launching Flutter app: $e',
+                  },
+                ],
+              };
+            }
+            break;
+          }
+
+          // launch_status tool — check on the launched process
+          if (toolName == 'launch_status') {
+            final alive = _launchedProcess != null && _launchedProcessAlive;
+            final map = <String, Object?>{
+              'alive': alive,
+              'projectPath': _launchedProjectPath,
+              'logLines': _launchLog.length,
+              'recentLog': _launchLog.join('\n'),
+            };
+            if (_launchedProcess != null && alive) {
+              map['pid'] = _launchedProcess!.pid;
+            }
+            result = {
+              'content': [
+                {'type': 'text', 'text': json.encode(map)}
+              ],
+            };
+            break;
+          }
+
+          // stop_app tool — kill the launched process
+          if (toolName == 'stop_app') {
+            if (_launchedProcess == null) {
+              result = {
+                'isError': true,
+                'content': [
+                  {
+                    'type': 'text',
+                    'text':
+                        'Error: No app has been launched via the launch tool.',
+                  },
+                ],
+              };
+              break;
+            }
+            await connection?.disconnect();
+            connection = null;
+            final stoppedPath = _launchedProjectPath;
+            _killLaunchedProcess();
+            _launchedProjectPath = null;
+            _launchLog.add('App stopped by stop_app tool');
+            result = {
+              'content': [
+                {
+                  'type': 'text',
+                  'text':
+                      '{"status":"stopped","projectPath":"$stoppedPath"}',
+                },
+              ],
+            };
+            break;
+          }
+
           // discover tool — scan for running Flutter apps via mDNS
           if (toolName == 'discover') {
             final services = await discoverFlutterVmServices();
@@ -843,4 +1132,30 @@ T _requireArg<T extends Object>(Map<String, Object?> args, String name) {
     );
   }
   return value;
+}
+
+/// Regex to extract the VM Service WebSocket URL from flutter run output.
+///
+/// Matches patterns like:
+///   ws://127.0.0.1:54321/abc123=/ws
+///   http://127.0.0.1:54321/abc123/
+final _vmServiceUrlPattern = RegExp(
+  r'(ws|http)s?://127\.0\.0\.1:\d+/([a-zA-Z0-9]+/)?ws?',
+);
+
+/// Kill the currently tracked launched Flutter process.
+void _killLaunchedProcess() {
+  final proc = _launchedProcess;
+  if (proc == null) return;
+  _launchedProcessAlive = false;
+  try {
+    proc.kill(ProcessSignal.sigterm);
+    // Give it a moment, then force kill
+    Future.delayed(const Duration(seconds: 2), () {
+      try {
+        proc.kill(ProcessSignal.sigkill);
+      } catch (_) {}
+    });
+  } catch (_) {}
+  _launchedProcess = null;
 }

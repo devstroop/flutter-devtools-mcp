@@ -6,6 +6,40 @@
   "args": [],
   "tools": [
     {
+      "name": "launch",
+      "description": "Launch a Flutter app in debug mode. Starts flutter run, waits for VM Service URL, auto-connects. Use stop_app to kill it.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "projectPath": {
+            "type": "string",
+            "description": "Absolute path to the Flutter project directory"
+          },
+          "deviceId": {
+            "type": "string",
+            "description": "Target device (macos, ios, android, chrome). Default: macos"
+          },
+          "target": {
+            "type": "string",
+            "description": "Target file. Default: lib/main.dart"
+          },
+          "launchTimeout": {
+            "type": "number",
+            "description": "Max seconds to wait. Default: 120"
+          }
+        },
+        "required": ["projectPath"]
+      }
+    },
+    {
+      "name": "launch_status",
+      "description": "Check the status of the most recently launched app process."
+    },
+    {
+      "name": "stop_app",
+      "description": "Stop a running app launched via the launch tool. Kills flutter run and disconnects."
+    },
+    {
       "name": "discover",
       "description": "Scan for running Flutter debug apps via mDNS. Returns detected VM Service URLs."
     },
