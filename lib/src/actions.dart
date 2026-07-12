@@ -14,7 +14,11 @@ class NodeBounds {
   final double width;
   final double height;
 
-  NodeBounds({required this.x, required this.y, required this.width, required this.height});
+  NodeBounds(
+      {required this.x,
+      required this.y,
+      required this.width,
+      required this.height});
 
   double get centerX => x + width / 2;
   double get centerY => y + height / 2;
@@ -26,7 +30,8 @@ class NodeBounds {
 ///
 /// Uses `WidgetInspectorService.instance.toObject()` via evaluate() to
 /// access the actual Element, then calls `localToGlobal` on its RenderBox.
-Future<NodeBounds> getBounds(FlutterConnection connection, ResolvedNode node) async {
+Future<NodeBounds> getBounds(
+    FlutterConnection connection, ResolvedNode node) async {
   _log.fine('Getting bounds for ${node.id}');
 
   // Primary strategy: use evaluate() to get bounds via WidgetInspectorService.
@@ -54,8 +59,11 @@ Future<NodeBounds> getBounds(FlutterConnection connection, ResolvedNode node) as
     final value = result.valueAsString;
     if (value != null && !value.startsWith('err:')) {
       final parts = value.split(',').map(double.parse).toList();
-      if (parts.length != 4) throw FormatException('Expected 4 coords, got ${parts.length}');
-      return NodeBounds(x: parts[0], y: parts[1], width: parts[2], height: parts[3]);
+      if (parts.length != 4) {
+        throw FormatException('Expected 4 coords, got ${parts.length}');
+      }
+      return NodeBounds(
+          x: parts[0], y: parts[1], width: parts[2], height: parts[3]);
     }
     _log.fine('evaluate bounds returned: $value');
   } catch (e) {
@@ -82,7 +90,8 @@ NodeBounds? _extractBoundsFromProperties(List<Object?> properties) {
       switch (name) {
         case 'size':
           // Size(375.0, 48.0)
-          final sizeMatch = RegExp(r'Size\(([\d.]+),\s*([\d.]+)\)').firstMatch(desc);
+          final sizeMatch =
+              RegExp(r'Size\(([\d.]+),\s*([\d.]+)\)').firstMatch(desc);
           if (sizeMatch != null) {
             width = double.tryParse(sizeMatch.group(1)!);
             height = double.tryParse(sizeMatch.group(2)!);
@@ -90,7 +99,8 @@ NodeBounds? _extractBoundsFromProperties(List<Object?> properties) {
         case 'offset':
         case 'paintOffset':
           // Offset(120.0, 540.0)
-          final offsetMatch = RegExp(r'Offset\(([\d.]+),\s*([\d.]+)\)').firstMatch(desc);
+          final offsetMatch =
+              RegExp(r'Offset\(([\d.]+),\s*([\d.]+)\)').firstMatch(desc);
           if (offsetMatch != null) {
             x = double.tryParse(offsetMatch.group(1)!);
             y = double.tryParse(offsetMatch.group(2)!);
@@ -135,7 +145,8 @@ Future<NodeBounds> _getBoundsFromLayoutExplorer(
     // Check top-level size field
     final sizeStr = data['size'] as String?;
     if (sizeStr != null) {
-      final sizeMatch = RegExp(r'Size\(([\d.]+),\s*([\d.]+)\)').firstMatch(sizeStr);
+      final sizeMatch =
+          RegExp(r'Size\(([\d.]+),\s*([\d.]+)\)').firstMatch(sizeStr);
       if (sizeMatch != null) {
         return NodeBounds(
           x: 0,
@@ -206,14 +217,13 @@ Future<ActionabilityResult> checkActionability(
   // Get screen size via evaluate
   var inViewport = true;
   try {
-    final screenResult = await connection.service.evaluate(
-      connection.isolateId,
-      connection.rootLibraryId,
+    final screenResult = await connection.evaluate(
       'WidgetsBinding.instance.renderViews.first.size.toString()',
     );
-    final screenStr = (screenResult is InstanceRef) ? screenResult.valueAsString : null;
+    final screenStr = screenResult.valueAsString;
     if (screenStr != null) {
-      final sizeMatch = RegExp(r'Size\(([\d.]+),\s*([\d.]+)\)').firstMatch(screenStr);
+      final sizeMatch =
+          RegExp(r'Size\(([\d.]+),\s*([\d.]+)\)').firstMatch(screenStr);
       if (sizeMatch != null) {
         final screenW = double.parse(sizeMatch.group(1)!);
         final screenH = double.parse(sizeMatch.group(2)!);
@@ -259,7 +269,8 @@ Future<ActionabilityResult> checkActionability(
 
   return ActionabilityResult(
     visible: visible,
-    hitTestable: true, // v2: overlay hit-test detection via hitTest() on RenderView
+    hitTestable:
+        true, // v2: overlay hit-test detection via hitTest() on RenderView
     inViewport: inViewport,
     enabled: enabled,
   );
@@ -271,14 +282,11 @@ Future<void> tap(FlutterConnection connection, NodeBounds bounds) async {
 
   // Use evaluate() to inject a tap gesture at the coordinates.
   // This uses the GestureBinding to simulate a pointer event sequence.
-  await connection.service.evaluate(
-    connection.isolateId,
-    connection.rootLibraryId,
-    '() async { '
+  await connection.evaluate(
+    '() { '
     'final binding = WidgetsBinding.instance; '
     'final pos = Offset(${bounds.centerX}, ${bounds.centerY}); '
     'binding.handlePointerEvent(PointerDownEvent(position: pos)); '
-    'await Future.delayed(Duration(milliseconds: 16)); '
     'binding.handlePointerEvent(PointerUpEvent(position: pos)); '
     'return "ok"; '
     '}()',
@@ -289,7 +297,8 @@ Future<void> tap(FlutterConnection connection, NodeBounds bounds) async {
 ///
 /// Uses the test text input channel to inject text into the focused field.
 Future<void> enterText(FlutterConnection connection, String text) async {
-  _log.info('Enter text: "${text.length > 20 ? '${text.substring(0, 20)}...' : text}"');
+  _log.info(
+      'Enter text: "${text.length > 20 ? '${text.substring(0, 20)}...' : text}"');
 
   // Escape the text for embedding in Dart source — must escape $, \, and '
   final escaped = text
@@ -345,18 +354,14 @@ Future<void> scroll(
   final steps = 10;
   final stepDx = dx / steps;
   final stepDy = dy / steps;
-  final stepMs = duration.inMilliseconds ~/ steps;
 
   // Inject a pointer drag gesture sequence
-  await connection.service.evaluate(
-    connection.isolateId,
-    connection.rootLibraryId,
-    '() async { '
+  await connection.evaluate(
+    '() { '
     'final binding = WidgetsBinding.instance; '
     'var pos = Offset(${bounds.centerX}, ${bounds.centerY}); '
     'binding.handlePointerEvent(PointerDownEvent(position: pos)); '
     'for (var i = 0; i < $steps; i++) { '
-    '  await Future.delayed(Duration(milliseconds: $stepMs)); '
     '  pos = pos + Offset($stepDx, $stepDy); '
     '  binding.handlePointerEvent(PointerMoveEvent(position: pos)); '
     '} '
@@ -370,9 +375,7 @@ Future<void> scroll(
 Future<void> pressBack(FlutterConnection connection) async {
   _log.info('Press back');
 
-  await connection.service.evaluate(
-    connection.isolateId,
-    connection.rootLibraryId,
+  await connection.evaluate(
     '() { '
     'final nav = Navigator.of(WidgetsBinding.instance.renderViewElement!.context, rootNavigator: true); '
     'if (nav.canPop()) { nav.pop(); return "popped"; } '

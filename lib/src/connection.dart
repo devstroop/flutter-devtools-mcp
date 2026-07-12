@@ -16,7 +16,8 @@ class FlutterConnection {
   IsolateRef? _mainIsolate;
   String? _rootLibraryId;
 
-  FlutterConnection({required String vmServiceUrl}) : vmServiceUrl = _normalizeVmUrl(vmServiceUrl) {
+  FlutterConnection({required String vmServiceUrl})
+      : vmServiceUrl = _normalizeVmUrl(vmServiceUrl) {
     if (!_isLocalhost(this.vmServiceUrl)) {
       throw ArgumentError('Only localhost VM Service URLs are allowed');
     }
@@ -37,7 +38,8 @@ class FlutterConnection {
   /// The root library ID of the main isolate, used as the target for evaluate().
   String get rootLibraryId {
     final id = _rootLibraryId;
-    if (id == null) throw StateError('No root library found. Call connect() first.');
+    if (id == null)
+      throw StateError('No root library found. Call connect() first.');
     return id;
   }
 
@@ -46,9 +48,18 @@ class FlutterConnection {
     _log.info('Connecting to $vmServiceUrl');
     _service = await vmServiceConnectUri(vmServiceUrl);
     final vm = await _service!.getVM();
-    _mainIsolate = vm.isolates?.firstWhere(
+
+    // Find the main Flutter isolate
+    final isolates = vm.isolates;
+    if (isolates == null || isolates.isEmpty) {
+      throw StateError(
+        'Connected to VM Service but no isolates found. '
+        'Ensure a Flutter app is running in debug mode.',
+      );
+    }
+    _mainIsolate = isolates.firstWhere(
       (iso) => iso.name == 'main',
-      orElse: () => vm.isolates!.first,
+      orElse: () => isolates.first,
     );
     _log.info('Connected. Isolate: ${_mainIsolate?.id}');
 
@@ -113,7 +124,8 @@ class FlutterConnection {
   Future<InstanceRef> evaluate(String expression) async {
     final result = await service.evaluate(isolateId, rootLibraryId, expression);
     if (result is ErrorRef) {
-      throw StateError('Evaluate failed: ${result.message ?? result.kind ?? 'unknown error'}');
+      throw StateError(
+          'Evaluate failed: ${result.message ?? result.kind ?? 'unknown error'}');
     }
     return result as InstanceRef;
   }

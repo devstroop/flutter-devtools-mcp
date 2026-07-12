@@ -39,7 +39,7 @@ Test against ugly real apps, not clean demos. If it works on a messy production 
 
 Run against a live Flutter debug app (test fixture app in `test/fixtures/test_app/`):
 
-1. **Snapshot round-trip** — snapshot tool returns valid tree, nodes have IDs
+1. **Snapshot round-trip** — widget_tree tool returns valid tree, nodes have IDs
 2. **Inspect round-trip** — inspect a specific node, get properties
 3. **Selector resolution** — resolve by semantics label, key, and text
 4. **Tap by semantics** — tap a labeled button, verify state change

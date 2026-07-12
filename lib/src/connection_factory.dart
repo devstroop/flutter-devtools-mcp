@@ -51,7 +51,16 @@ class ConnectionFactory {
 
     // Return cached connection if it exists and is still connected
     if (_cache.containsKey(url)) {
-      return _cache[url]!;
+      final existing = _cache[url]!;
+      if (await _isConnectionAlive(existing)) {
+        return existing;
+      }
+      // Connection is stale — remove from cache and reconnect
+      _log.info('Cached connection to $url is stale — reconnecting...');
+      _cache.remove(url);
+      try {
+        await existing.disconnect();
+      } catch (_) {}
     }
 
     // Create and connect a new connection
@@ -74,6 +83,17 @@ class ConnectionFactory {
       }
     }
     _cache.clear();
+  }
+
+  /// Check if a cached connection is still alive by pinging the VM Service.
+  Future<bool> _isConnectionAlive(FlutterConnection conn) async {
+    try {
+      // Try to get the VM — if the connection is dead this will throw
+      await conn.service.getVM();
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Discover the first running Flutter debug app via mDNS.

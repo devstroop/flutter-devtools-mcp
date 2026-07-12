@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../connection.dart';
 import '../connection_factory.dart';
 import '../mcp_transport.dart';
@@ -14,10 +16,11 @@ Future<Map<String, Object?>> getErrorsImpl(
 ) async {
   final startTime = trace.start();
   final errors = <Map<String, Object?>>[];
+  StreamSubscription<dynamic>? subscription;
 
   try {
     // Listen for Extension events which carry structured Flutter errors
-    final subscription = connection.service.onExtensionEvent.listen((event) {
+    subscription = connection.service.onExtensionEvent.listen((event) {
       if (event.extensionKind == 'Flutter.Error') {
         final data = event.extensionData?.data;
         if (data != null) {
@@ -49,8 +52,6 @@ Future<Map<String, Object?>> getErrorsImpl(
 
     // Give a short window for error events to arrive
     await Future.delayed(const Duration(milliseconds: 300));
-
-    await subscription.cancel();
 
     // Also try to get the error count via evaluate
     int? errorCount;
@@ -85,19 +86,23 @@ Future<Map<String, Object?>> getErrorsImpl(
       error: e.toString(),
     );
     return {'status': 'error', 'error': e.toString()};
+  } finally {
+    await subscription?.cancel();
   }
 }
 
 ToolDef createGetErrorsTool(ConnectionFactory factory) {
   return ToolDef(
     name: 'get_errors',
-    description: 'Retrieve Flutter framework errors (structured errors) from the running app.',
+    description:
+        'Retrieve Flutter framework errors (structured errors) from the running app.',
     inputSchema: {
       'type': 'object',
       'properties': {
         'vmServiceUrl': {
           'type': 'string',
-          'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
+          'description':
+              'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
         },
       },
     },

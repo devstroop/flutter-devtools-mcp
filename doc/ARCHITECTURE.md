@@ -26,7 +26,7 @@ These extensions are registered by the Flutter framework (not DevTools). Any Web
 
 | Extension | Purpose | Used by |
 |---|---|---|
-| `getRootWidgetSummaryTree` | Pruned widget tree (framework noise removed) | `snapshot` tool |
+| `getRootWidgetSummaryTree` | Pruned widget tree (framework noise removed) | `widget_tree` tool |
 | `getDetailsSubtree` | Deep properties for one node (by `valueId`) | `inspect` tool, selector enrichment |
 | `getRootRenderObject` | Full render tree with bounds | Coordinate resolution |
 | `getChildren` | Children of a node | Tree traversal |
@@ -77,7 +77,7 @@ Captures the current render tree as PNG bytes.
    └── log { action, selector, resolved_node, bounds, timestamp, result }
 ```
 
-### Tool Call: `snapshot()`
+### Tool Call: `widget_tree()` (formerly `snapshot()`)
 
 ```
 1. getRootWidgetSummaryTree()

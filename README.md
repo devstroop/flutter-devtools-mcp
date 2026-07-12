@@ -1,4 +1,4 @@
-# flutter_devtools_mcp
+# Flutter Devtools MCP
 
 An [MCP server](https://modelcontextprotocol.io/) that lets AI agents see and interact with your running Flutter app — tap buttons, type text, scroll, take screenshots, and more.
 
@@ -64,16 +64,37 @@ That's it. The server auto-discovers your running Flutter app via mDNS on the fi
 
 | Tool | What it does |
 |---|---|---|
-| `connect` | Connect/reconnect to a Flutter app (no args = mDNS, or pass a URL) |
-| `snapshot` | Widget tree as LLM-friendly JSON |
-| `inspect` | Detailed properties of a widget node |
-| `tap` | Tap a widget by selector |
-| `type_text` | Type into a text field |
-| `scroll` | Scroll in a direction |
-| `screenshot` | Capture screen as PNG |
+| `connect` | Connect/reconnect to a Flutter app (no args = mDNS, or pass a URL). Use instead of DTD tools. |
+| `discover` | Scan for running Flutter debug apps via mDNS |
+| `status` | Check connection status + detectable apps |
+| `launch` | Launch flutter run as subprocess + auto-connect |
+| `launch_status` | Check launched process health + recent logs |
+| `stop_app` | Kill launched process + disconnect |
+| `widget_tree` | Widget tree as structured JSON (every widget, type, label, key, bounds) |
+| `inspect` | Detailed properties of a widget node by ID |
+| `get_parent_chain` | Ancestor chain — understand layout context |
+| `get_render_tree` | Render object tree as text |
+| `get_layer_tree` | Compositing layer tree as text |
+| `dump_semantics` | Accessibility/semantics tree |
+| `tap` | Tap a widget by selector (semantics:, key:, text:, index:) |
+| `type_text` | Focus a text field then enter text |
+| `scroll` | Scroll a scrollable widget |
+| `screenshot` | Capture screen as PNG image |
 | `hot_reload` | Trigger hot reload |
+| `hot_restart` | Full hot restart (resets state) |
 | `evaluate` | Run a Dart expression |
 | `press_back` | Pop the top route |
+| `get_errors` | Get Flutter framework errors |
+| `get_logs` | Capture stdout/stderr/log() output |
+| `get_memory` | Get memory usage (heap, external) |
+| `toggle_dark_mode` | Toggle dark/light mode |
+| `toggle_platform` | Override target platform |
+| `toggle_debug_paint` | Toggle widget boundary overlay |
+| `toggle_repaint_rainbow` | Toggle repaint rainbow |
+| `toggle_slow_animations` | Slow down/restore animations |
+| `toggle_performance_overlay` | Toggle frame timing graphs |
+| `track_rebuilds` | Toggle widget rebuild tracking |
+| `track_repaints` | Toggle repaint tracking |
 
 ### Selectors
 

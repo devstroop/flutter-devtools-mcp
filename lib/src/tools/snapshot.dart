@@ -12,15 +12,18 @@ Future<Map<String, Object?>> snapshotImpl(FlutterConnection connection) async {
   return transformTree(rawTree);
 }
 
-/// MCP tool: snapshot
+/// MCP tool: widget_tree
 ///
 /// Returns the current widget tree as LLM-friendly JSON.
-/// Uses `getRootWidgetSummaryTree` (already pruned by Flutter).
+/// Use this to see every widget on screen — its type, label, key, bounds, and children.
+/// (Previously called "snapshot" — search for that term if you don't see this tool.)
 ToolDef createSnapshotTool(ConnectionFactory factory) {
   return ToolDef(
-    name: 'snapshot',
-    description: 'Get the current widget tree as LLM-friendly JSON. '
-        'Returns pruned tree with type, label, key, bounds for each node.',
+    name: 'widget_tree',
+    description:
+        'Get the current widget tree as structured JSON — every widget, its type, label, key, bounds, and children. '
+        'Use this to understand what is on screen. '
+        'Also known as: snapshot. If you want a visual screenshot, use the screenshot tool instead.',
     inputSchema: {
       'type': 'object',
       'properties': {

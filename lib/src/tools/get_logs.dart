@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../connection.dart';
 import '../connection_factory.dart';
 import '../mcp_transport.dart';
@@ -15,6 +17,9 @@ Future<Map<String, Object?>> getLogsImpl(
 ) async {
   final startTime = trace.start();
   final logs = <Map<String, Object?>>[];
+  StreamSubscription<dynamic>? stdoutSub;
+  StreamSubscription<dynamic>? stderrSub;
+  StreamSubscription<dynamic>? loggingSub;
 
   try {
     // Subscribe to Stdout stream
@@ -32,7 +37,7 @@ Future<Map<String, Object?>> getLogsImpl(
     }
 
     // Listen for stdout events
-    final stdoutSub = connection.service.onStdoutEvent.listen((event) {
+    stdoutSub = connection.service.onStdoutEvent.listen((event) {
       final bytes = event.bytes;
       if (bytes != null) {
         logs.add({
@@ -44,7 +49,7 @@ Future<Map<String, Object?>> getLogsImpl(
     });
 
     // Listen for stderr events
-    final stderrSub = connection.service.onStderrEvent.listen((event) {
+    stderrSub = connection.service.onStderrEvent.listen((event) {
       final bytes = event.bytes;
       if (bytes != null) {
         logs.add({
@@ -60,7 +65,7 @@ Future<Map<String, Object?>> getLogsImpl(
       await connection.service.streamListen('Logging');
     } catch (_) {}
 
-    final loggingSub = connection.service.onLoggingEvent.listen((event) {
+    loggingSub = connection.service.onLoggingEvent.listen((event) {
       final logRecord = event.logRecord;
       if (logRecord != null) {
         logs.add({
@@ -80,10 +85,6 @@ Future<Map<String, Object?>> getLogsImpl(
 
     // Give a window for events to arrive
     await Future.delayed(const Duration(milliseconds: 500));
-
-    await stdoutSub.cancel();
-    await stderrSub.cancel();
-    await loggingSub.cancel();
 
     trace.complete(
       action: 'get_logs',
@@ -106,19 +107,26 @@ Future<Map<String, Object?>> getLogsImpl(
       error: e.toString(),
     );
     return {'status': 'error', 'error': e.toString()};
+  } finally {
+    // Ensure subscriptions are always cancelled, even on error
+    await stdoutSub?.cancel();
+    await stderrSub?.cancel();
+    await loggingSub?.cancel();
   }
 }
 
 ToolDef createGetLogsTool(ConnectionFactory factory) {
   return ToolDef(
     name: 'get_logs',
-    description: 'Capture recent app output (stdout/stderr) from the running Flutter app.',
+    description:
+        'Capture recent app output (stdout/stderr) from the running Flutter app.',
     inputSchema: {
       'type': 'object',
       'properties': {
         'vmServiceUrl': {
           'type': 'string',
-          'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
+          'description':
+              'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
         },
       },
     },

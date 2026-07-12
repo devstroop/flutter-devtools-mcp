@@ -6,11 +6,10 @@ import '../mcp_transport.dart';
 /// MCP tool: toggle_dark_mode
 ///
 /// Toggle between light and dark mode using the Flutter brightness override.
-/// Pass [enable] = true for dark mode, false for light mode, or null to
-/// remove the override (revert to system default).
+/// Pass [enable] = true for dark mode, false for light mode.
 Future<Map<String, Object?>> toggleDarkModeImpl(
   FlutterConnection connection,
-  bool? enable,
+  bool enable,
   TraceLog trace,
 ) async {
   final startTime = trace.start();
@@ -20,10 +19,7 @@ Future<Map<String, Object?>> toggleDarkModeImpl(
       'ext.flutter.brightnessOverride',
       isolateId: connection.isolateId,
       args: {
-        if (enable != null)
-          'value': enable ? 'Brightness.dark' : 'Brightness.light'
-        else
-          'value': 'Brightness.light', // remove override by setting light
+        'value': enable ? 'Brightness.dark' : 'Brightness.light',
       },
     );
 
@@ -33,15 +29,15 @@ Future<Map<String, Object?>> toggleDarkModeImpl(
     trace.complete(
       action: 'toggle_dark_mode',
       startTimeMs: startTime,
-      target: enable?.toString() ?? 'system',
+      target: enable.toString(),
       result: 'success',
     );
 
     return {
       'status': 'success',
-      'darkMode': current?.contains('dark') ?? enable ?? false,
+      'darkMode': current?.contains('dark') ?? enable,
       'brightness':
-          current ?? (enable == true ? 'Brightness.dark' : 'Brightness.light'),
+          current ?? (enable ? 'Brightness.dark' : 'Brightness.light'),
     };
   } catch (e) {
     trace.complete(

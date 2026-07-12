@@ -47,7 +47,7 @@ void main() {
 
   group('snapshot', () {
     test('returns valid tree with node IDs', () async {
-      final result = await snapshotTool(connection);
+      final result = await snapshotImpl(connection);
       expect(result['id'], isNotNull);
       expect(result['type'], isA<String>());
       // Tree should have children (the app has content)
@@ -55,7 +55,7 @@ void main() {
     });
 
     test('tree contains expected widget types', () async {
-      final result = await snapshotTool(connection);
+      final result = await snapshotImpl(connection);
       // Walk the tree and collect types
       final types = <String>{};
       _collectTypes(result, types);
@@ -68,10 +68,10 @@ void main() {
   group('inspect', () {
     test('returns detailed node properties', () async {
       // First get a node ID from snapshot
-      final tree = await snapshotTool(connection);
+      final tree = await snapshotImpl(connection);
       final nodeId = tree['id'] as String;
 
-      final detail = await inspectTool(connection, nodeId);
+      final detail = await inspectImpl(connection, nodeId);
       expect(detail['id'], isNotNull);
       expect(detail['type'], isA<String>());
     });
@@ -105,7 +105,7 @@ void main() {
   group('tap', () {
     test('taps button and changes state', () async {
       // Tap the increment button
-      final result = await tapTool(connection, 'semantics:Increment', trace);
+      final result = await tapImpl(connection, 'semantics:Increment', trace);
       expect(result['status'], 'success');
       // Verify the resolved node is returned
       final node = result['node'] as Map<String, Object?>?;
@@ -130,13 +130,14 @@ void main() {
 
   group('evaluate', () {
     test('evaluates simple expression', () async {
-      final result = await evaluateTool(connection, '1 + 1', trace);
+      final result = await evaluateImpl(connection, '1 + 1', trace);
       expect(result['status'], 'success');
       expect(result['value'], '2');
     });
 
     test('evaluates string expression', () async {
-      final result = await evaluateTool(connection, '"hello".toUpperCase()', trace);
+      final result =
+          await evaluateImpl(connection, '"hello".toUpperCase()', trace);
       expect(result['status'], 'success');
       expect(result['value'], 'HELLO');
     });
@@ -166,8 +167,11 @@ void main() {
       // When the field is offscreen or gesture injection doesn't result in
       // focus (a known limitation of PointerEvent injection), it should
       // give a clear error indicating no focused text field was found.
-      final result = await typeTextTool(
-        connection, 'key:name_field', 'Test Input', trace,
+      final result = await typeTextImpl(
+        connection,
+        'key:name_field',
+        'Test Input',
+        trace,
       );
       // Either success (field got focused) or error with clear message
       final status = result['status'] as String;
@@ -183,8 +187,11 @@ void main() {
   group('scroll', () {
     test('scrolls a list view down', () async {
       // The scroll tab has a vertical ListView with key 'vertical_list'
-      final result = await scrollTool(
-        connection, 'key:vertical_list', 'down', trace,
+      final result = await scrollImpl(
+        connection,
+        'key:vertical_list',
+        'down',
+        trace,
       );
       expect(result['status'], 'success');
       expect(result['direction'], 'down');
@@ -212,24 +219,4 @@ void _collectTypes(Map<String, Object?> node, Set<String> types) {
       }
     }
   }
-}
-
-/// Find a text node containing the given prefix in a transformed tree.
-String? _findText(Map<String, Object?> node, String prefix) {
-  final text = node['text'] as String?;
-  if (text != null && text.startsWith(prefix)) return text;
-
-  final type = node['type'] as String?;
-  if (type != null && type.startsWith(prefix)) return type;
-
-  final children = node['children'] as List<Object?>?;
-  if (children != null) {
-    for (final child in children) {
-      if (child is Map<String, Object?>) {
-        final found = _findText(child, prefix);
-        if (found != null) return found;
-      }
-    }
-  }
-  return null;
 }
