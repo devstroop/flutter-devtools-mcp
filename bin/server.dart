@@ -45,7 +45,8 @@ void main(List<String> args) async {
 
   final parsed = parser.parse(args);
   if (parsed['help'] as bool) {
-    stderr.writeln('flutter_devtools_mcp — MCP server for Flutter UI automation');
+    stderr
+        .writeln('flutter_devtools_mcp — MCP server for Flutter UI automation');
     stderr.writeln(parser.usage);
     exit(0);
   }
@@ -53,7 +54,8 @@ void main(List<String> args) async {
   // -- Setup logging
   Logger.root.level = (parsed['verbose'] as bool) ? Level.ALL : Level.INFO;
   Logger.root.onRecord.listen((record) {
-    stderr.writeln('[${record.level.name}] ${record.loggerName}: ${record.message}');
+    stderr.writeln(
+        '[${record.level.name}] ${record.loggerName}: ${record.message}');
   });
 
   final log = Logger('Server');
@@ -69,7 +71,8 @@ void main(List<String> args) async {
   // Read JSON-RPC requests from stdin, write responses to stdout.
   log.info('MCP server ready. Listening on stdio.');
 
-  await for (final line in stdin.transform(utf8.decoder).transform(const LineSplitter())) {
+  await for (final line
+      in stdin.transform(utf8.decoder).transform(const LineSplitter())) {
     if (line.trim().isEmpty) continue;
 
     try {
@@ -150,8 +153,9 @@ void main(List<String> args) async {
                   'properties': {
                     'vmServiceUrl': {
                       'type': 'string',
-                      'description': 'VM Service WebSocket URL (e.g. ws://127.0.0.1:54321/ws). '
-                          'Omit to auto-discover via mDNS.',
+                      'description':
+                          'VM Service WebSocket URL (e.g. ws://127.0.0.1:54321/ws). '
+                              'Omit to auto-discover via mDNS.',
                     },
                   },
                 },
@@ -173,7 +177,10 @@ void main(List<String> args) async {
                 'inputSchema': {
                   'type': 'object',
                   'properties': {
-                    'nodeId': {'type': 'string', 'description': 'Node ID from snapshot'},
+                    'nodeId': {
+                      'type': 'string',
+                      'description': 'Node ID from snapshot'
+                    },
                   },
                   'required': ['nodeId'],
                 },
@@ -186,7 +193,10 @@ void main(List<String> args) async {
                 'inputSchema': {
                   'type': 'object',
                   'properties': {
-                    'selector': {'type': 'string', 'description': 'Widget selector'},
+                    'selector': {
+                      'type': 'string',
+                      'description': 'Widget selector'
+                    },
                   },
                   'required': ['selector'],
                 },
@@ -198,7 +208,10 @@ void main(List<String> args) async {
                 'inputSchema': {
                   'type': 'object',
                   'properties': {
-                    'selector': {'type': 'string', 'description': 'Text field selector'},
+                    'selector': {
+                      'type': 'string',
+                      'description': 'Text field selector'
+                    },
                     'text': {'type': 'string', 'description': 'Text to enter'},
                   },
                   'required': ['selector', 'text'],
@@ -211,7 +224,10 @@ void main(List<String> args) async {
                 'inputSchema': {
                   'type': 'object',
                   'properties': {
-                    'selector': {'type': 'string', 'description': 'Scrollable widget selector'},
+                    'selector': {
+                      'type': 'string',
+                      'description': 'Scrollable widget selector'
+                    },
                     'direction': {
                       'type': 'string',
                       'enum': ['up', 'down', 'left', 'right'],
@@ -250,7 +266,10 @@ void main(List<String> args) async {
                 'inputSchema': {
                   'type': 'object',
                   'properties': {
-                    'expression': {'type': 'string', 'description': 'Dart expression'},
+                    'expression': {
+                      'type': 'string',
+                      'description': 'Dart expression'
+                    },
                   },
                   'required': ['expression'],
                 },
@@ -271,7 +290,10 @@ void main(List<String> args) async {
                 'inputSchema': {
                   'type': 'object',
                   'properties': {
-                    'enable': {'type': 'boolean', 'description': 'true=dark, false=light'},
+                    'enable': {
+                      'type': 'boolean',
+                      'description': 'true=dark, false=light'
+                    },
                   },
                   'required': ['enable'],
                 },
@@ -286,7 +308,14 @@ void main(List<String> args) async {
                   'properties': {
                     'platform': {
                       'type': 'string',
-                      'enum': ['android', 'ios', 'fuchsia', 'linux', 'macos', 'windows'],
+                      'enum': [
+                        'android',
+                        'ios',
+                        'fuchsia',
+                        'linux',
+                        'macos',
+                        'windows'
+                      ],
                       'description': 'Target platform to emulate',
                     },
                   },
@@ -340,7 +369,10 @@ void main(List<String> args) async {
                 'inputSchema': {
                   'type': 'object',
                   'properties': {
-                    'enable': {'type': 'boolean', 'description': 'true to show debug paint, false to hide'},
+                    'enable': {
+                      'type': 'boolean',
+                      'description': 'true to show debug paint, false to hide'
+                    },
                   },
                   'required': ['enable'],
                 },
@@ -353,7 +385,10 @@ void main(List<String> args) async {
                 'inputSchema': {
                   'type': 'object',
                   'properties': {
-                    'enable': {'type': 'boolean', 'description': 'true to enable, false to disable'},
+                    'enable': {
+                      'type': 'boolean',
+                      'description': 'true to enable, false to disable'
+                    },
                   },
                   'required': ['enable'],
                 },
@@ -368,7 +403,8 @@ void main(List<String> args) async {
                   'properties': {
                     'timeDilation': {
                       'type': 'number',
-                      'description': 'Time dilation factor (1.0 = normal speed)',
+                      'description':
+                          'Time dilation factor (1.0 = normal speed)',
                     },
                   },
                   'required': ['timeDilation'],
@@ -382,7 +418,10 @@ void main(List<String> args) async {
                 'inputSchema': {
                   'type': 'object',
                   'properties': {
-                    'enable': {'type': 'boolean', 'description': 'true to show overlay, false to hide'},
+                    'enable': {
+                      'type': 'boolean',
+                      'description': 'true to show overlay, false to hide'
+                    },
                   },
                   'required': ['enable'],
                 },
@@ -415,7 +454,10 @@ void main(List<String> args) async {
                 'inputSchema': {
                   'type': 'object',
                   'properties': {
-                    'nodeId': {'type': 'string', 'description': 'Node ID from snapshot'},
+                    'nodeId': {
+                      'type': 'string',
+                      'description': 'Node ID from snapshot'
+                    },
                   },
                   'required': ['nodeId'],
                 },
@@ -428,7 +470,10 @@ void main(List<String> args) async {
                 'inputSchema': {
                   'type': 'object',
                   'properties': {
-                    'enable': {'type': 'boolean', 'description': 'true to start tracking, false to stop'},
+                    'enable': {
+                      'type': 'boolean',
+                      'description': 'true to start tracking, false to stop'
+                    },
                   },
                   'required': ['enable'],
                 },
@@ -441,7 +486,10 @@ void main(List<String> args) async {
                 'inputSchema': {
                   'type': 'object',
                   'properties': {
-                    'enable': {'type': 'boolean', 'description': 'true to start tracking, false to stop'},
+                    'enable': {
+                      'type': 'boolean',
+                      'description': 'true to start tracking, false to stop'
+                    },
                   },
                   'required': ['enable'],
                 },
@@ -465,7 +513,10 @@ void main(List<String> args) async {
             result = {
               'isError': true,
               'content': [
-                {'type': 'text', 'text': 'Error: missing required "name" parameter'},
+                {
+                  'type': 'text',
+                  'text': 'Error: missing required "name" parameter'
+                },
               ],
             };
             break;
@@ -478,13 +529,19 @@ void main(List<String> args) async {
             final apps = services.map((s) => s.wsUrl).toList();
             String text;
             if (apps.isEmpty) {
-              text = '{"status":"ok","apps":[],"message":"No running Flutter debug apps found. '
+              text =
+                  '{"status":"ok","apps":[],"message":"No running Flutter debug apps found. '
                   'Start one with: cd <your_flutter_project> && flutter run --debug"}';
             } else {
-              text = '{"status":"ok","apps":${json.encode(apps)},"message":"Found ${apps.length} running Flutter app(s). '
+              text =
+                  '{"status":"ok","apps":${json.encode(apps)},"message":"Found ${apps.length} running Flutter app(s). '
                   'Use connect with one of these URLs or call connect with no args to auto-connect."}';
             }
-            result = {'content': [{'type': 'text', 'text': text}]};
+            result = {
+              'content': [
+                {'type': 'text', 'text': text}
+              ]
+            };
             break;
           }
 
@@ -502,7 +559,11 @@ void main(List<String> args) async {
               map['url'] = connection.vmServiceUrl;
               map['isolateId'] = connection.isolateId;
             }
-            result = {'content': [{'type': 'text', 'text': json.encode(map)}]};
+            result = {
+              'content': [
+                {'type': 'text', 'text': json.encode(map)}
+              ]
+            };
             break;
           }
 
@@ -530,8 +591,9 @@ void main(List<String> args) async {
                 'content': [
                   {
                     'type': 'text',
-                    'text': '{"status":"error","error":"Failed to connect to Flutter app."'
-                        '"hint":"$extra"}',
+                    'text':
+                        '{"status":"error","error":"Failed to connect to Flutter app."'
+                            '"hint":"$extra"}',
                   },
                 ],
               };
@@ -541,7 +603,8 @@ void main(List<String> args) async {
                 'content': [
                   {
                     'type': 'text',
-                    'text': '{"status":"connected","url":"${connection.vmServiceUrl}"}',
+                    'text':
+                        '{"status":"connected","url":"${connection.vmServiceUrl}"}',
                   },
                 ],
               };
@@ -566,14 +629,20 @@ void main(List<String> args) async {
             result = {
               'isError': true,
               'content': [
-                {'type': 'text', 'text': 'Error: Not connected to a Flutter app. $hint'},
+                {
+                  'type': 'text',
+                  'text': 'Error: Not connected to a Flutter app. $hint'
+                },
               ],
             };
             break;
           }
 
           result = await _handleToolCall(
-            connection, trace, toolName, toolArgs,
+            connection,
+            trace,
+            toolName,
+            toolArgs,
           );
 
         default:
@@ -606,12 +675,14 @@ void main(List<String> args) async {
   await connection?.disconnect();
 }
 
-Future<FlutterConnection?> _connectToFlutter(Logger log, String? configuredVmUrl) async {
+Future<FlutterConnection?> _connectToFlutter(
+    Logger log, String? configuredVmUrl) async {
   String? vmUrl = configuredVmUrl;
 
   if (vmUrl == null) {
     // Auto-discover via mDNS — Flutter apps broadcast _dartobservatory._tcp
-    stderr.writeln('No VM Service URL provided. Scanning for Flutter apps via mDNS...');
+    stderr.writeln(
+        'No VM Service URL provided. Scanning for Flutter apps via mDNS...');
     final services = await discoverFlutterVmServices();
 
     if (services.isEmpty) {
@@ -645,9 +716,11 @@ Future<FlutterConnection?> _connectToFlutter(Logger log, String? configuredVmUrl
     return null;
   } catch (e) {
     final msg = e.toString();
-    if (msg.contains('WebSocketException') || msg.contains('Connection refused')) {
+    if (msg.contains('WebSocketException') ||
+        msg.contains('Connection refused')) {
       stderr.writeln('Could not open WebSocket to $vmUrl');
-      stderr.writeln('Ensure the Flutter app is running in debug mode and the URL is correct.');
+      stderr.writeln(
+          'Ensure the Flutter app is running in debug mode and the URL is correct.');
     } else {
       stderr.writeln('Failed to connect to VM Service at $vmUrl: $e');
     }
@@ -664,14 +737,20 @@ Future<Map<String, Object?>> _handleToolCall(
   try {
     final content = switch (tool) {
       'snapshot' => await snapshotTool(connection),
-      'inspect' => await inspectTool(connection, _requireArg<String>(args, 'nodeId')),
-      'tap' => await tapTool(connection, _requireArg<String>(args, 'selector'), trace),
+      'inspect' =>
+        await inspectTool(connection, _requireArg<String>(args, 'nodeId')),
+      'tap' =>
+        await tapTool(connection, _requireArg<String>(args, 'selector'), trace),
       'type_text' => await typeTextTool(
-          connection, _requireArg<String>(args, 'selector'),
-          _requireArg<String>(args, 'text'), trace),
+          connection,
+          _requireArg<String>(args, 'selector'),
+          _requireArg<String>(args, 'text'),
+          trace),
       'scroll' => await scrollTool(
-          connection, _requireArg<String>(args, 'selector'),
-          _requireArg<String>(args, 'direction'), trace,
+          connection,
+          _requireArg<String>(args, 'selector'),
+          _requireArg<String>(args, 'direction'),
+          trace,
           amount: (args['amount'] as num?)?.toDouble() ?? 300.0),
       'screenshot' => await screenshotTool(connection, trace),
       'hot_reload' => await hotReloadTool(connection, trace),
