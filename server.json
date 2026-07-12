@@ -1,7 +1,7 @@
 {
   "name": "flutter_devtools_mcp",
-  "version": "0.2.0",
-  "description": "Robust MCP server for Flutter DevTools automation. Connects via VM Service WebSocket with mDNS auto-discovery.",
+  "version": "0.3.0",
+  "description": "MCP server for Flutter DevTools automation. ATTACH to a running app by passing its VM Service URL to connect, or use launch to start one.",
   "command": "bin/flutter_devtools_mcp_server",
   "args": [],
   "tools": [
@@ -41,13 +41,25 @@
     },
     {
       "name": "discover",
-      "description": "Scan for running Flutter debug apps via mDNS. Returns detected VM Service URLs."
+      "description": "Scan for running Flutter debug apps via mDNS. Returns ws:// URLs. Pass one to connect to attach."
     },
     {
       "name": "status",
-      "description": "Check connection status and detect available Flutter debug apps."
+      "description": "Check connection status. Shows URL if connected, and how many apps detectable via mDNS."
     },
     {
+      "name": "connect",
+      "description": "ATTACH to a running Flutter debug app via its VM Service URL. Pass the http:// URL from 'flutter run' output (with the auth token) as vmServiceUrl. Auto-normalizes http:// to ws://. No args = auto-discover via mDNS.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "vmServiceUrl": {
+            "type": "string",
+            "description": "The VM Service URL from flutter run output, e.g. http://127.0.0.1:54321/abc123=/. Both http:// and ws:// work."
+          }
+        }
+      }
+    },
       "name": "connect",
       "description": "Connect to a Flutter debug app. No args = auto-discover via mDNS. Pass vmServiceUrl to connect explicitly.",
       "inputSchema": {

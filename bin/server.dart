@@ -98,6 +98,9 @@ void main(List<String> args) async {
             'serverInfo': {
               'name': 'flutter_devtools_mcp',
               'version': '0.1.0',
+              'usage': 'When you see a Dart VM Service URL in terminal output '
+                  '(e.g. http://127.0.0.1:PORT/TOKEN=/), '
+                  'call the connect tool with that URL as vmServiceUrl to attach.',
             },
           };
 
@@ -186,8 +189,8 @@ void main(List<String> args) async {
               {
                 'name': 'discover',
                 'description': 'Scan for running Flutter debug apps via mDNS. '
-                    'Returns a list of detected VM Service URLs and device names. '
-                    'Useful before calling connect to see what is available.',
+                    'Returns ws://127.0.0.1:PORT/TOKEN=/ws URLs. '
+                    'Pass any returned URL to connect to attach to that app.',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {},
@@ -196,8 +199,9 @@ void main(List<String> args) async {
               {
                 'name': 'status',
                 'description': 'Check connection status. '
-                    'Returns whether connected, the VM Service URL if connected, '
-                    'and how many running apps are detectable via mDNS.',
+                    'Returns whether connected, the attached app URL, '
+                    'and how many running apps are detectable via mDNS. '
+                    'Always call this first after connect to verify before using other tools.',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {},
@@ -205,17 +209,20 @@ void main(List<String> args) async {
               },
               {
                 'name': 'connect',
-                'description': 'Connect to a Flutter debug app. '
-                    'No args = auto-discover first running Flutter app via mDNS. '
-                    'Pass a vmServiceUrl to connect explicitly (e.g. from flutter run output). '
-                    'Run discover first to see available apps.',
+                'description': 'ATTACH to a running Flutter debug app by passing its VM Service URL. '
+                    'When you run flutter run and see "A Dart VM Service is available at: '
+                    'http://127.0.0.1:PORT/TOKEN=/" in the terminal, copy that EXACT http:// URL '
+                    '(with the token) and pass it as vmServiceUrl. The server auto-normalizes '
+                    'http:// to ws:// and appends /ws. No args = auto-discover via mDNS.',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {
                     'vmServiceUrl': {
                       'type': 'string',
                       'description':
-                          'VM Service WebSocket URL (e.g. ws://127.0.0.1:54321/ws). '
+                          'The full VM Service URL from flutter run output, '
+                              'e.g. http://127.0.0.1:54321/abc123=/. '
+                              'Both http:// and ws:// formats work. '
                               'Omit to auto-discover via mDNS.',
                     },
                   },
@@ -223,9 +230,10 @@ void main(List<String> args) async {
               },
               {
                 'name': 'snapshot',
-                'description': 'Requires: connect first. '
-                    'Get the current widget tree as LLM-friendly JSON. '
-                    'Returns pruned tree with type, label, key, bounds for each node.',
+                'description':
+                    'REQUIRES: connect first (use the connect tool with the VM Service URL from flutter run output). '
+                        'Get the current widget tree as LLM-friendly JSON. '
+                        'Returns pruned tree with type, label, key, bounds for each node.',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {},
@@ -233,7 +241,7 @@ void main(List<String> args) async {
               },
               {
                 'name': 'inspect',
-                'description': 'Requires: connect first. '
+                'description': 'REQUIRES: connect first. '
                     'Get detailed properties of a specific widget node.',
                 'inputSchema': {
                   'type': 'object',
@@ -248,9 +256,8 @@ void main(List<String> args) async {
               },
               {
                 'name': 'tap',
-                'description': 'Requires: connect first. '
-                    'Tap a widget. Selector formats: '
-                    'semantics:Label, key:value_key, text:Content, index:Type:N',
+                'description':
+                    'REQUIRES: connect first. Tap a widget by selector (semantics:, key:, text:, index:).',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {
@@ -264,8 +271,8 @@ void main(List<String> args) async {
               },
               {
                 'name': 'type_text',
-                'description': 'Requires: connect first. '
-                    'Focus a text field by selector and enter text.',
+                'description':
+                    'REQUIRES: connect first. Focus a text field by selector and enter text.',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {
@@ -280,8 +287,8 @@ void main(List<String> args) async {
               },
               {
                 'name': 'scroll',
-                'description': 'Requires: connect first. '
-                    'Scroll a scrollable widget in a direction.',
+                'description':
+                    'REQUIRES: connect first. Scroll a scrollable widget.',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {
@@ -304,8 +311,8 @@ void main(List<String> args) async {
               },
               {
                 'name': 'screenshot',
-                'description': 'Requires: connect first. '
-                    'Capture the current screen as PNG.',
+                'description':
+                    'REQUIRES: connect first. Capture the current screen as PNG.',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {},
@@ -313,8 +320,7 @@ void main(List<String> args) async {
               },
               {
                 'name': 'hot_reload',
-                'description': 'Requires: connect first. '
-                    'Trigger hot reload on the connected Flutter app.',
+                'description': 'REQUIRES: connect first. Trigger hot reload.',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {},
@@ -322,8 +328,8 @@ void main(List<String> args) async {
               },
               {
                 'name': 'evaluate',
-                'description': 'Requires: connect first. '
-                    'Evaluate a Dart expression in the running app.',
+                'description':
+                    'REQUIRES: connect first. Evaluate a Dart expression.',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {
@@ -337,8 +343,8 @@ void main(List<String> args) async {
               },
               {
                 'name': 'press_back',
-                'description': 'Requires: connect first. '
-                    'Press the system back button / pop the top route.',
+                'description':
+                    'REQUIRES: connect first. Press back / pop route.',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {},
@@ -346,8 +352,8 @@ void main(List<String> args) async {
               },
               {
                 'name': 'toggle_dark_mode',
-                'description': 'Requires: connect first. '
-                    'Toggle dark/light mode. Set enable=true for dark, false for light.',
+                'description':
+                    'REQUIRES: connect first. Toggle dark/light mode.',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {
@@ -361,9 +367,8 @@ void main(List<String> args) async {
               },
               {
                 'name': 'toggle_platform',
-                'description': 'Requires: connect first. '
-                    'Override the target platform (test iOS rendering on Android, etc). '
-                    'Values: android, ios, fuchsia, linux, macos, windows.',
+                'description':
+                    'REQUIRES: connect first. Override target platform.',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {
@@ -385,8 +390,7 @@ void main(List<String> args) async {
               },
               {
                 'name': 'get_memory',
-                'description': 'Requires: connect first. '
-                    'Get memory usage of the Flutter app (heap used/capacity, external).',
+                'description': 'REQUIRES: connect first. Get memory usage.',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {},
@@ -394,9 +398,7 @@ void main(List<String> args) async {
               },
               {
                 'name': 'dump_semantics',
-                'description': 'Requires: connect first. '
-                    'Dump the accessibility/semantics tree in traversal order. '
-                    'Useful for verifying a11y labels and screen reader output.',
+                'description': 'REQUIRES: connect first. Dump semantics tree.',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {},
@@ -404,9 +406,8 @@ void main(List<String> args) async {
               },
               {
                 'name': 'hot_restart',
-                'description': 'Requires: connect first. '
-                    'Full hot restart — resets all app state while keeping loaded code. '
-                    'Unlike hot_reload, this restarts the app from scratch.',
+                'description':
+                    'REQUIRES: connect first. Hot restart (resets state).',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {},
@@ -414,9 +415,8 @@ void main(List<String> args) async {
               },
               {
                 'name': 'get_errors',
-                'description': 'Requires: connect first. '
-                    'Get Flutter framework errors from the running app. '
-                    'Returns structured error info (red screen errors, layout overflows, etc).',
+                'description':
+                    'REQUIRES: connect first. Get Flutter framework errors.',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {},
@@ -424,9 +424,8 @@ void main(List<String> args) async {
               },
               {
                 'name': 'toggle_debug_paint',
-                'description': 'Requires: connect first. '
-                    'Toggle debug paint overlay — shows widget boundaries, padding, '
-                    'and alignment guides. Take a screenshot to see the overlay.',
+                'description':
+                    'REQUIRES: connect first. Toggle debug paint overlay.',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {
@@ -440,9 +439,8 @@ void main(List<String> args) async {
               },
               {
                 'name': 'toggle_repaint_rainbow',
-                'description': 'Requires: connect first. '
-                    'Toggle repaint rainbow — rotating colors on repainted regions. '
-                    'Helps identify widgets repainting too frequently.',
+                'description':
+                    'REQUIRES: connect first. Toggle repaint rainbow.',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {
@@ -456,9 +454,8 @@ void main(List<String> args) async {
               },
               {
                 'name': 'toggle_slow_animations',
-                'description': 'Requires: connect first. '
-                    'Slow down or restore animation speed. '
-                    '1.0 = normal, 2.0 = 2× slower, 5.0 = 5× slower, 10.0 = 10× slower.',
+                'description':
+                    'REQUIRES: connect first. Slow down or restore animations.',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {
@@ -473,9 +470,8 @@ void main(List<String> args) async {
               },
               {
                 'name': 'toggle_performance_overlay',
-                'description': 'Requires: connect first. '
-                    'Toggle the performance overlay showing frame timing graphs '
-                    '(UI thread and raster thread). Take a screenshot to capture it.',
+                'description':
+                    'REQUIRES: connect first. Toggle performance overlay.',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {
@@ -489,9 +485,8 @@ void main(List<String> args) async {
               },
               {
                 'name': 'get_render_tree',
-                'description': 'Requires: connect first. '
-                    'Dump the render object tree as text. Shows RenderObject hierarchy '
-                    'with layout constraints, sizes, and paint info.',
+                'description':
+                    'REQUIRES: connect first. Dump render object tree.',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {},
@@ -499,9 +494,8 @@ void main(List<String> args) async {
               },
               {
                 'name': 'get_layer_tree',
-                'description': 'Requires: connect first. '
-                    'Dump the compositing layer tree as text. Shows how render objects '
-                    'are composed into GPU layers. Useful for diagnosing compositing overhead.',
+                'description':
+                    'REQUIRES: connect first. Dump compositing layer tree.',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {},
@@ -509,9 +503,8 @@ void main(List<String> args) async {
               },
               {
                 'name': 'get_parent_chain',
-                'description': 'Requires: connect first. '
-                    'Get the parent chain (ancestor widgets) for a node ID from snapshot. '
-                    'Returns the path from the node up to the root widget.',
+                'description':
+                    'REQUIRES: connect first. Get parent chain for a node.',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {
@@ -525,9 +518,8 @@ void main(List<String> args) async {
               },
               {
                 'name': 'track_rebuilds',
-                'description': 'Requires: connect first. '
-                    'Toggle widget rebuild tracking. When enabled, widgets show '
-                    'rebuild counts in the inspector overlay.',
+                'description':
+                    'REQUIRES: connect first. Track widget rebuilds.',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {
@@ -541,9 +533,8 @@ void main(List<String> args) async {
               },
               {
                 'name': 'track_repaints',
-                'description': 'Requires: connect first. '
-                    'Toggle repaint tracking. When enabled, highlights render objects '
-                    'that are repainting.',
+                'description':
+                    'REQUIRES: connect first. Track widget repaints.',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {
@@ -557,9 +548,8 @@ void main(List<String> args) async {
               },
               {
                 'name': 'get_logs',
-                'description': 'Requires: connect first. '
-                    'Capture recent app output — stdout, stderr, and dart:developer log() '
-                    'messages. Returns logs collected within a brief window.',
+                'description':
+                    'REQUIRES: connect first. Capture recent app logs.',
                 'inputSchema': {
                   'type': 'object',
                   'properties': {},
@@ -804,8 +794,7 @@ void main(List<String> args) async {
               'content': [
                 {
                   'type': 'text',
-                  'text':
-                      '{"status":"stopped","projectPath":"$stoppedPath"}',
+                  'text': '{"status":"stopped","projectPath":"$stoppedPath"}',
                 },
               ],
             };
