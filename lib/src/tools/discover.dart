@@ -13,8 +13,11 @@ Future<Map<String, Object?>> discoverImpl() async {
     return {
       'status': 'ok',
       'apps': apps,
-      'message':
-          'No running Flutter debug apps found. Start one with: flutter run --debug',
+      'message': 'No running Flutter debug apps found via mDNS or port scan.\n'
+          'Start one with: flutter run --debug\n'
+          'Then paste the VM Service URL into any tool call:\n'
+          '  widget_tree(vmServiceUrl: "http://127.0.0.1:PORT/TOKEN=/")\n'
+          '  connect(vmServiceUrl: "http://127.0.0.1:PORT/TOKEN=/")',
     };
   }
   return {

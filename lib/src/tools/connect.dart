@@ -44,9 +44,7 @@ ToolDef createConnectTool(ConnectionFactory factory) {
           'content': [
             {
               'type': 'text',
-              'text': 'Error connecting to Flutter app: $e. '
-                  'Make sure the app is running with flutter run --debug '
-                  'and the VM Service URL is correct.',
+              'text': '$e',
             },
           ],
         };

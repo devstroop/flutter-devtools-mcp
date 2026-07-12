@@ -44,8 +44,17 @@ class ConnectionFactory {
     url ??= await _discoverFirst();
     if (url == null) {
       throw StateError(
-        'No Flutter debug app found. Start one with "flutter run --debug" '
-        'and try again, or pass an explicit vmServiceUrl.',
+        'No Flutter debug app found via mDNS or port scan.\n'
+        '\n'
+        'Paste the VM Service URL from your "flutter run" output:\n'
+        '  connect(vmServiceUrl: "http://127.0.0.1:PORT/TOKEN=/")\n'
+        '\n'
+        'The URL looks like:\n'
+        '  A Dart VM Service on macOS is available at: http://127.0.0.1:54321/abc123=/\n'
+        '                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n'
+        '                                                    Copy this part  👆\n'
+        '\n'
+        'Or run flutter run --debug in another terminal first.',
       );
     }
 
