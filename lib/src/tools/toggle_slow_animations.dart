@@ -1,6 +1,6 @@
 import '../connection.dart';
 import '../trace.dart';
-import '../connection_factory.dart';
+import '../current_connection.dart';
 import '../mcp_transport.dart';
 
 /// MCP tool: toggle_slow_animations
@@ -63,7 +63,7 @@ Future<Map<String, Object?>> toggleSlowAnimationsImpl(
   }
 }
 
-ToolDef createToggleSlowAnimationsTool(ConnectionFactory factory) {
+ToolDef createToggleSlowAnimationsTool() {
   return ToolDef(
     name: 'toggle_slow_animations',
     description:
@@ -75,16 +75,11 @@ ToolDef createToggleSlowAnimationsTool(ConnectionFactory factory) {
           'type': 'number',
           'description': 'Time dilation factor (1.0 = normal speed)'
         },
-        'vmServiceUrl': {
-          'type': 'string',
-          'description':
-              'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)'
-        },
       },
       'required': ['timeDilation'],
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      final conn = await CurrentConnection.get();
       return toggleSlowAnimationsImpl(
           conn, (args['timeDilation'] as num).toDouble(), TraceLog());
     },

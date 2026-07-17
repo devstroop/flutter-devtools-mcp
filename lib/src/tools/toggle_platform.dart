@@ -1,5 +1,5 @@
 import '../connection.dart';
-import '../connection_factory.dart';
+import '../current_connection.dart';
 import '../mcp_transport.dart';
 import '../trace.dart';
 
@@ -72,7 +72,7 @@ Future<Map<String, Object?>> togglePlatformImpl(
   }
 }
 
-ToolDef createTogglePlatformTool(ConnectionFactory factory) {
+ToolDef createTogglePlatformTool() {
   return ToolDef(
     name: 'toggle_platform',
     description: 'Override the target platform for the Flutter app.',
@@ -84,15 +84,11 @@ ToolDef createTogglePlatformTool(ConnectionFactory factory) {
           'description': 'Target platform',
           'enum': ['android', 'ios', 'fuchsia', 'linux', 'macos', 'windows'],
         },
-        'vmServiceUrl': {
-          'type': 'string',
-          'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
-        },
       },
       'required': ['platform'],
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      final conn = await CurrentConnection.get();
       return togglePlatformImpl(conn, args['platform'] as String, TraceLog());
     },
   );

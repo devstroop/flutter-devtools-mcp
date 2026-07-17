@@ -1,5 +1,5 @@
 import '../connection.dart';
-import '../connection_factory.dart';
+import '../current_connection.dart';
 import '../mcp_transport.dart';
 import '../selectors.dart';
 import '../actions.dart' as actions;
@@ -55,7 +55,7 @@ Future<Map<String, Object?>> typeTextImpl(
 }
 
 /// Create an MCP [ToolDef] for type_text.
-ToolDef createTypeTextTool(ConnectionFactory factory) {
+ToolDef createTypeTextTool() {
   return ToolDef(
     name: 'type_text',
     description: 'Focus a text field by selector, then enter text.',
@@ -70,15 +70,11 @@ ToolDef createTypeTextTool(ConnectionFactory factory) {
           'type': 'string',
           'description': 'Text to type into the field.',
         },
-        'vmServiceUrl': {
-          'type': 'string',
-          'description': 'Optional VM Service WebSocket URL to target a specific Flutter debug app.',
-        },
       },
       'required': ['selector', 'text'],
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      final conn = await CurrentConnection.get();
       return typeTextImpl(conn, args['selector'] as String, args['text'] as String, TraceLog());
     },
   );

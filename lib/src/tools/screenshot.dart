@@ -1,5 +1,5 @@
 import '../connection.dart';
-import '../connection_factory.dart';
+import '../current_connection.dart';
 import '../mcp_transport.dart';
 import '../trace.dart';
 
@@ -39,21 +39,16 @@ Future<Map<String, Object?>> screenshotImpl(
   }
 }
 
-ToolDef createScreenshotTool(ConnectionFactory factory) {
+ToolDef createScreenshotTool() {
   return ToolDef(
     name: 'screenshot',
     description: 'Capture the current screen as base64-encoded PNG.',
     inputSchema: {
       'type': 'object',
-      'properties': {
-        'vmServiceUrl': {
-          'type': 'string',
-          'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
-        },
-      },
+      'properties': {},
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      final conn = await CurrentConnection.get();
       final result = await screenshotImpl(conn, TraceLog());
       if (result['status'] == 'success') {
         result['_mcp_content_type'] = 'image';

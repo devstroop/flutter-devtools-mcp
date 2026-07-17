@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import '../connection.dart';
-import '../connection_factory.dart';
+import '../current_connection.dart';
 import '../mcp_transport.dart';
 import '../trace.dart';
 
@@ -91,23 +91,17 @@ Future<Map<String, Object?>> getErrorsImpl(
   }
 }
 
-ToolDef createGetErrorsTool(ConnectionFactory factory) {
+ToolDef createGetErrorsTool() {
   return ToolDef(
     name: 'get_errors',
     description:
         'Retrieve Flutter framework errors (structured errors) from the running app.',
     inputSchema: {
       'type': 'object',
-      'properties': {
-        'vmServiceUrl': {
-          'type': 'string',
-          'description':
-              'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
-        },
-      },
+      'properties': {},
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      final conn = await CurrentConnection.get();
       return getErrorsImpl(conn, TraceLog());
     },
   );

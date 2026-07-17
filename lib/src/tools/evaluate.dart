@@ -1,5 +1,5 @@
 import '../connection.dart';
-import '../connection_factory.dart';
+import '../current_connection.dart';
 import '../mcp_transport.dart';
 import '../trace.dart';
 
@@ -41,7 +41,7 @@ Future<Map<String, Object?>> evaluateImpl(
   }
 }
 
-ToolDef createEvaluateTool(ConnectionFactory factory) {
+ToolDef createEvaluateTool() {
   return ToolDef(
     name: 'evaluate',
     description: 'Evaluate a Dart expression in the running app.',
@@ -49,15 +49,11 @@ ToolDef createEvaluateTool(ConnectionFactory factory) {
       'type': 'object',
       'properties': {
         'expression': {'type': 'string', 'description': 'Dart expression to evaluate'},
-        'vmServiceUrl': {
-          'type': 'string',
-          'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
-        },
       },
       'required': ['expression'],
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      final conn = await CurrentConnection.get();
       return evaluateImpl(conn, args['expression'] as String, TraceLog());
     },
   );

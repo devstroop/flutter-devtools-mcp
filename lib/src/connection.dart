@@ -38,8 +38,9 @@ class FlutterConnection {
   /// The root library ID of the main isolate, used as the target for evaluate().
   String get rootLibraryId {
     final id = _rootLibraryId;
-    if (id == null)
+    if (id == null) {
       throw StateError('No root library found. Call connect() first.');
+    }
     return id;
   }
 

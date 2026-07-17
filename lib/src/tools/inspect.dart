@@ -1,5 +1,5 @@
 import '../connection.dart';
-import '../connection_factory.dart';
+import '../current_connection.dart';
 import '../mcp_transport.dart';
 import '../transform.dart';
 
@@ -22,7 +22,7 @@ Future<Map<String, Object?>> inspectImpl(
   return transformTree(rawNode);
 }
 
-ToolDef createInspectTool(ConnectionFactory factory) {
+ToolDef createInspectTool() {
   return ToolDef(
     name: 'inspect',
     description: 'Get detailed properties of a specific widget node.',
@@ -30,15 +30,11 @@ ToolDef createInspectTool(ConnectionFactory factory) {
       'type': 'object',
       'properties': {
         'nodeId': {'type': 'string', 'description': 'Node ID from snapshot'},
-        'vmServiceUrl': {
-          'type': 'string',
-          'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
-        },
       },
       'required': ['nodeId'],
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      final conn = await CurrentConnection.get();
       return inspectImpl(conn, args['nodeId'] as String);
     },
   );

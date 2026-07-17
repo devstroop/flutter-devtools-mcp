@@ -1,6 +1,6 @@
 import '../connection.dart';
 import '../trace.dart';
-import '../connection_factory.dart';
+import '../current_connection.dart';
 import '../mcp_transport.dart';
 
 /// MCP tool: toggle_dark_mode
@@ -50,7 +50,7 @@ Future<Map<String, Object?>> toggleDarkModeImpl(
   }
 }
 
-ToolDef createToggleDarkModeTool(ConnectionFactory factory) {
+ToolDef createToggleDarkModeTool() {
   return ToolDef(
     name: 'toggle_dark_mode',
     description:
@@ -62,16 +62,11 @@ ToolDef createToggleDarkModeTool(ConnectionFactory factory) {
           'type': 'boolean',
           'description': 'true for dark mode, false for light mode'
         },
-        'vmServiceUrl': {
-          'type': 'string',
-          'description':
-              'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)'
-        },
       },
       'required': ['enable'],
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      final conn = await CurrentConnection.get();
       return toggleDarkModeImpl(conn, args['enable'] as bool, TraceLog());
     },
   );

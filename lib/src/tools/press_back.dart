@@ -1,5 +1,5 @@
 import '../connection.dart';
-import '../connection_factory.dart';
+import '../current_connection.dart';
 import '../mcp_transport.dart';
 import '../actions.dart' as actions;
 import '../trace.dart';
@@ -35,21 +35,16 @@ Future<Map<String, Object?>> pressBackImpl(
   }
 }
 
-ToolDef createPressBackTool(ConnectionFactory factory) {
+ToolDef createPressBackTool() {
   return ToolDef(
     name: 'press_back',
     description: 'Pop the top route from the navigator stack.',
     inputSchema: {
       'type': 'object',
-      'properties': {
-        'vmServiceUrl': {
-          'type': 'string',
-          'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
-        },
-      },
+      'properties': {},
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      final conn = await CurrentConnection.get();
       return pressBackImpl(conn, TraceLog());
     },
   );

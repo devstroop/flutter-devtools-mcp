@@ -1,5 +1,5 @@
 import '../connection.dart';
-import '../connection_factory.dart';
+import '../current_connection.dart';
 import '../mcp_transport.dart';
 import '../transform.dart';
 
@@ -17,7 +17,7 @@ Future<Map<String, Object?>> snapshotImpl(FlutterConnection connection) async {
 /// Returns the current widget tree as LLM-friendly JSON.
 /// Use this to see every widget on screen — its type, label, key, bounds, and children.
 /// (Previously called "snapshot" — search for that term if you don't see this tool.)
-ToolDef createSnapshotTool(ConnectionFactory factory) {
+ToolDef createSnapshotTool() {
   return ToolDef(
     name: 'widget_tree',
     description:
@@ -26,16 +26,10 @@ ToolDef createSnapshotTool(ConnectionFactory factory) {
         'Also known as: snapshot. If you want a visual screenshot, use the screenshot tool instead.',
     inputSchema: {
       'type': 'object',
-      'properties': {
-        'vmServiceUrl': {
-          'type': 'string',
-          'description':
-              'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
-        },
-      },
+      'properties': {},
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      final conn = await CurrentConnection.get();
       return snapshotImpl(conn);
     },
   );

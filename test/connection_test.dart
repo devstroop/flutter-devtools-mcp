@@ -1,6 +1,5 @@
 import 'package:test/test.dart';
 import 'package:flutter_devtools_mcp/src/connection.dart';
-import 'package:flutter_devtools_mcp/src/connection_factory.dart';
 
 void main() {
   group('FlutterConnection', () {
@@ -104,26 +103,6 @@ void main() {
         await conn.disconnect();
         expect(() => conn.service, throwsA(isA<StateError>()));
       });
-    });
-  });
-
-  group('ConnectionFactory', () {
-    test('starts with no connections', () {
-      final factory = ConnectionFactory();
-      expect(factory.hasConnection, false);
-    });
-
-    test('disconnectAll on empty cache does not throw', () async {
-      final factory = ConnectionFactory();
-      await factory.disconnectAll();
-      expect(factory.hasConnection, false);
-    });
-
-    test('double disconnectAll is safe', () async {
-      final factory = ConnectionFactory();
-      await factory.disconnectAll();
-      await factory.disconnectAll();
-      expect(factory.hasConnection, false);
     });
   });
 }

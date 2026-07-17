@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import '../connection.dart';
-import '../connection_factory.dart';
+import '../current_connection.dart';
 import '../mcp_transport.dart';
 import '../trace.dart';
 
@@ -85,7 +85,7 @@ Future<Map<String, Object?>> getParentChainImpl(
   }
 }
 
-ToolDef createGetParentChainTool(ConnectionFactory factory) {
+ToolDef createGetParentChainTool() {
   return ToolDef(
     name: 'get_parent_chain',
     description: 'Get the parent chain (ancestors) of a widget node.',
@@ -93,15 +93,11 @@ ToolDef createGetParentChainTool(ConnectionFactory factory) {
       'type': 'object',
       'properties': {
         'nodeId': {'type': 'string', 'description': 'Node ID from snapshot'},
-        'vmServiceUrl': {
-          'type': 'string',
-          'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
-        },
       },
       'required': ['nodeId'],
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      final conn = await CurrentConnection.get();
       return getParentChainImpl(conn, args['nodeId'] as String, TraceLog());
     },
   );

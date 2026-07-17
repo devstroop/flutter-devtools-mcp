@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import '../connection.dart';
-import '../connection_factory.dart';
+import '../current_connection.dart';
 import '../mcp_transport.dart';
 import '../trace.dart';
 
@@ -115,23 +115,17 @@ Future<Map<String, Object?>> getLogsImpl(
   }
 }
 
-ToolDef createGetLogsTool(ConnectionFactory factory) {
+ToolDef createGetLogsTool() {
   return ToolDef(
     name: 'get_logs',
     description:
         'Capture recent app output (stdout/stderr) from the running Flutter app.',
     inputSchema: {
       'type': 'object',
-      'properties': {
-        'vmServiceUrl': {
-          'type': 'string',
-          'description':
-              'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
-        },
-      },
+      'properties': {},
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      final conn = await CurrentConnection.get();
       return getLogsImpl(conn, TraceLog());
     },
   );

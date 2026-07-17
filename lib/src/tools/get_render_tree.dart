@@ -1,5 +1,5 @@
 import '../connection.dart';
-import '../connection_factory.dart';
+import '../current_connection.dart';
 import '../mcp_transport.dart';
 import '../trace.dart';
 
@@ -43,21 +43,16 @@ Future<Map<String, Object?>> getRenderTreeImpl(
   }
 }
 
-ToolDef createGetRenderTreeTool(ConnectionFactory factory) {
+ToolDef createGetRenderTreeTool() {
   return ToolDef(
     name: 'get_render_tree',
     description: 'Dump the full render object tree as text.',
     inputSchema: {
       'type': 'object',
-      'properties': {
-        'vmServiceUrl': {
-          'type': 'string',
-          'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
-        },
-      },
+      'properties': {},
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      final conn = await CurrentConnection.get();
       return getRenderTreeImpl(conn, TraceLog());
     },
   );
