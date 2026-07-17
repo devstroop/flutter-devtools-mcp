@@ -44,14 +44,17 @@ void main() {
     await CurrentConnection.disconnect();
     exit(0);
   });
-  ProcessSignal.sigterm.watch().listen((_) async {
-    await CurrentConnection.disconnect();
-    exit(0);
-  });
+  // SIGTERM is POSIX-only — skip on Windows where it throws SignalException
+  if (Platform.isLinux || Platform.isMacOS) {
+    ProcessSignal.sigterm.watch().listen((_) async {
+      await CurrentConnection.disconnect();
+      exit(0);
+    });
+  }
 
   McpServer(
     name: 'flutter_devtools_mcp',
-    version: '0.4.0',
+    version: '1.0.0',
     tools: [
       // Connection management
       createConnectTool(),
