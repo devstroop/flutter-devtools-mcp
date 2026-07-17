@@ -1,4 +1,4 @@
-# Flutter Devtools MCP
+﻿# Flutter Devtools MCP
 
 An [MCP server](https://modelcontextprotocol.io/) that lets AI agents see and interact with your running Flutter app — tap buttons, type text, scroll, take screenshots, and more.
 
@@ -50,26 +50,153 @@ Add to your editor's MCP config:
 }
 ```
 
-That's it. The server auto-discovers your running Flutter app via mDNS on the first tool call. No environment variables needed.
-
-> **Multiple apps running?** Call `connect(vmServiceUrl: "ws://...")` to pin a specific one. Or call `connect()` with no args to re-scan via mDNS.
-
 ## Usage
 
-1. Start your Flutter app: `flutter run --debug`
-2. Open your AI editor — the MCP tools appear automatically
-3. Ask the AI to interact with your app
+The workflow is simple:
+
+1. **Run your app**: `flutter run --debug` (or `flutter run -d macos --debug`, etc.)
+2. **Copy the VM Service URL** from the output (looks like `http://127.0.0.1:54321/abc123=/`)
+3. **Call `connect`**: `connect(vmServiceUrl: "http://127.0.0.1:54321/abc123=/")`
+4. **Interact**: call `widget_tree`, `tap`, `type_text`, `screenshot`, etc.
+5. **Done?** Call `disconnect()` to close the WebSocket.
+
+---
+
+## Recommended Workflows
+
+These are battle-tested sequences optimized for AI agents. Follow them step by step.
+
+### 🔍 Inspecting the UI
+
+```
+1. connect(vmServiceUrl: "...")
+   → Wait for {"status":"connected"}
+
+2. widget_tree()
+   → Returns every widget on screen: types, labels, keys, bounds, children
+   → Pick the nodeId of the widget you want to examine
+
+3. inspect(nodeId: "inspector-0x...")
+   → Deep properties, styles, constraints for that one widget
+
+4. get_parent_chain(nodeId: "inspector-0x...")
+   → See where the widget sits in the hierarchy (child → root)
+```
+
+### 👆 Interacting with a widget
+
+```
+1. widget_tree()
+   → Find the target widget's selector (semantics:Label is best)
+
+2. tap(selector: "semantics:Submit")
+   → Resolves widget → checks visibility → taps center
+
+3. type_text(selector: "semantics:EmailField", text: "hello@example.com")
+   → Focuses field → enters text
+
+4. scroll(selector: "semantics:ItemList", direction: "down", amount: 200)
+
+5. press_back()
+   → Pops the current route
+```
+
+### 🐛 Debugging layout issues
+
+```
+1. screenshot()
+   → Returns a real image of the screen (base64 PNG, rendered as image by MCP)
+
+2. get_render_tree()
+   → Text dump of every RenderBox: size, constraints, paint info
+
+3. get_layer_tree()
+   → Compositing layer tree — find excessive saveLayer or opacity layers
+
+4. toggle_debug_paint(enable: true)
+   → Shows widget boundaries, padding, and alignment guides
+   → screenshot() to capture the overlay
+
+5. toggle_performance_overlay(enable: true)
+   → Real-time frame timing graphs (UI + raster thread)
+   → screenshot() to capture graphs for analysis
+```
+
+### ⚡ Hot reload / restart cycle
+
+```
+1. hot_reload()
+   → Applies code changes, preserves state
+   → Wait for {"status":"success"}
+
+2. hot_restart()
+   → Full reassemble — resets app state
+   → Use after hot_reload if state corruption occurs
+```
+
+### 🎨 Theme & platform testing
+
+```
+1. toggle_dark_mode(enable: true)
+   → Switches to dark mode
+   → screenshot() to verify
+
+2. toggle_dark_mode(enable: false)
+   → Back to light mode
+
+3. toggle_platform(platform: "ios")
+   → Renders iOS-style widgets (Cupertino)
+   → screenshot() to verify
+
+4. toggle_platform(platform: "android")
+   → Back to Material Design
+```
+
+### 🐞 Finding errors
+
+```
+1. get_errors()
+   → Returns structured Flutter errors (build errors, render flex overflows, etc.)
+
+2. get_logs()
+   → Captures recent print(), debugPrint(), and log() output
+
+3. evaluate(expression: "someStateVariable")
+   → Inspect any Dart value at runtime
+```
+
+### 📊 Performance profiling
+
+```
+1. toggle_slow_animations(timeDilation: 5.0)
+   → Makes animations 5× slower for visual inspection
+
+2. track_rebuilds(enable: true)
+   → Widgets show rebuild counts in the inspector overlay
+
+3. track_repaints(enable: true)
+   → Repainting regions are highlighted
+
+4. toggle_repaint_rainbow(enable: true)
+   → Rotating color overlay on every repaint — spot over-repainting
+
+5. screenshot()
+   → Capture the visual debugging state
+
+6. toggle_slow_animations(timeDilation: 1.0)
+   → Restore normal speed
+
+7. track_rebuilds(enable: false)
+   → Disable tracking
+```
 
 ## Tools
 
 | Tool | What it does |
-|---|---|---|
-| `connect` | Connect/reconnect to a Flutter app (no args = mDNS, or pass a URL). Use instead of DTD tools. |
-| `discover` | Scan for running Flutter debug apps via mDNS |
-| `status` | Check connection status + detectable apps |
-| `launch` | Launch flutter run as subprocess + auto-connect |
-| `launch_status` | Check launched process health + recent logs |
-| `stop_app` | Kill launched process + disconnect |
+|---|---|
+| `connect` | Connect to a running Flutter debug app (requires vmServiceUrl from flutter run output) |
+| `disconnect` | Disconnect from the current app |
+| `status` | Check whether connected to a Flutter app |
 | `widget_tree` | Widget tree as structured JSON (every widget, type, label, key, bounds) |
 | `inspect` | Detailed properties of a widget node by ID |
 | `get_parent_chain` | Ancestor chain — understand layout context |
@@ -118,8 +245,7 @@ Flutter App (debug)  →  VM Service WebSocket  →  This MCP Server  →  AI Ag
 - **Reads** widget trees via `ext.flutter.inspector.*` extensions
 - **Acts** via `evaluate()` gesture injection (tap, type, scroll)
 - **Captures** screenshots via `_flutter.screenshot`
-- **Discovers** apps via mDNS (`_dartobservatory._tcp`)
-- **Connects lazily** — server starts instantly, connects on first tool call
+- **Connects on demand** — pass the VM Service URL to `connect`, then all tools use that single connection
 
 ## Development
 
