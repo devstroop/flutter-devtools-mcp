@@ -1,5 +1,5 @@
 import '../connection.dart';
-import '../connection_factory.dart';
+import '../current_connection.dart';
 import '../mcp_transport.dart';
 import '../trace.dart';
 
@@ -41,21 +41,16 @@ Future<Map<String, Object?>> hotRestartImpl(
   }
 }
 
-ToolDef createHotRestartTool(ConnectionFactory factory) {
+ToolDef createHotRestartTool() {
   return ToolDef(
     name: 'hot_restart',
     description: 'Trigger a full hot restart (reassemble) on the connected Flutter app.',
     inputSchema: {
       'type': 'object',
-      'properties': {
-        'vmServiceUrl': {
-          'type': 'string',
-          'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
-        },
-      },
+      'properties': {},
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      final conn = await CurrentConnection.get();
       return hotRestartImpl(conn, TraceLog());
     },
   );

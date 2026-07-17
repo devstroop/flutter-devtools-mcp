@@ -1,33 +1,27 @@
 import 'dart:convert';
-import '../connection_factory.dart';
-import '../discovery.dart';
+import '../current_connection.dart';
 import '../mcp_transport.dart';
 
-/// MCP tool impl: status
+/// MCP tool: status
 ///
-/// Check connection status and detect available Flutter debug apps.
-Future<Map<String, Object?>> statusImpl(ConnectionFactory factory) async {
-  final services = await discoverFlutterVmServices();
-  final apps = services.map((s) => s.wsUrl).toList();
+/// Check whether we're currently connected to a Flutter app.
+Future<Map<String, Object?>> statusImpl() async {
   return {
-    'connected': factory.hasConnection,
-    'appCount': apps.length,
-    'apps': apps,
+    'connected': CurrentConnection.isConnected,
   };
 }
 
-ToolDef createStatusTool(ConnectionFactory factory) {
+ToolDef createStatusTool() {
   return ToolDef(
     name: 'status',
-    description: 'Check connection status. Returns whether connected, '
-        'and how many running apps are detectable via mDNS. '
-        'Always call this first after connect to verify.',
+    description: 'Check whether the tool is currently connected to a Flutter debug app. '
+        'Returns {"connected": true/false}.',
     inputSchema: {
       'type': 'object',
       'properties': {},
     },
     handler: (args) async {
-      final result = await statusImpl(factory);
+      final result = await statusImpl();
       return {
         'content': [
           {'type': 'text', 'text': json.encode(result)},

@@ -1,5 +1,5 @@
 import '../connection.dart';
-import '../connection_factory.dart';
+import '../current_connection.dart';
 import '../mcp_transport.dart';
 import '../selectors.dart';
 import '../actions.dart' as actions;
@@ -60,7 +60,7 @@ Future<Map<String, Object?>> tapImpl(
 }
 
 /// Create an MCP [ToolDef] for tap.
-ToolDef createTapTool(ConnectionFactory factory) {
+ToolDef createTapTool() {
   return ToolDef(
     name: 'tap',
     description: 'Tap a widget identified by a CSS-style selector.',
@@ -71,15 +71,11 @@ ToolDef createTapTool(ConnectionFactory factory) {
           'type': 'string',
           'description': 'CSS-style selector identifying the widget to tap (e.g. "semantics:Increment", "text=Submit").',
         },
-        'vmServiceUrl': {
-          'type': 'string',
-          'description': 'Optional VM Service WebSocket URL to target a specific Flutter debug app.',
-        },
       },
       'required': ['selector'],
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      final conn = await CurrentConnection.get();
       return tapImpl(conn, args['selector'] as String, TraceLog());
     },
   );

@@ -1,6 +1,6 @@
 import '../connection.dart';
 import '../trace.dart';
-import '../connection_factory.dart';
+import '../current_connection.dart';
 import '../mcp_transport.dart';
 
 /// MCP tool: toggle_debug_paint
@@ -49,7 +49,7 @@ Future<Map<String, Object?>> toggleDebugPaintImpl(
   }
 }
 
-ToolDef createToggleDebugPaintTool(ConnectionFactory factory) {
+ToolDef createToggleDebugPaintTool() {
   return ToolDef(
     name: 'toggle_debug_paint',
     description:
@@ -61,16 +61,11 @@ ToolDef createToggleDebugPaintTool(ConnectionFactory factory) {
           'type': 'boolean',
           'description': 'true to show debug paint, false to hide'
         },
-        'vmServiceUrl': {
-          'type': 'string',
-          'description':
-              'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)'
-        },
       },
       'required': ['enable'],
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      final conn = await CurrentConnection.get();
       return toggleDebugPaintImpl(conn, args['enable'] as bool, TraceLog());
     },
   );

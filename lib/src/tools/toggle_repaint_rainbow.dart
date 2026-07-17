@@ -1,6 +1,6 @@
 import '../connection.dart';
 import '../trace.dart';
-import '../connection_factory.dart';
+import '../current_connection.dart';
 import '../mcp_transport.dart';
 
 /// MCP tool: toggle_repaint_rainbow
@@ -49,7 +49,7 @@ Future<Map<String, Object?>> toggleRepaintRainbowImpl(
   }
 }
 
-ToolDef createToggleRepaintRainbowTool(ConnectionFactory factory) {
+ToolDef createToggleRepaintRainbowTool() {
   return ToolDef(
     name: 'toggle_repaint_rainbow',
     description:
@@ -61,16 +61,11 @@ ToolDef createToggleRepaintRainbowTool(ConnectionFactory factory) {
           'type': 'boolean',
           'description': 'true to show repaint rainbow, false to hide'
         },
-        'vmServiceUrl': {
-          'type': 'string',
-          'description':
-              'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)'
-        },
       },
       'required': ['enable'],
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      final conn = await CurrentConnection.get();
       return toggleRepaintRainbowImpl(conn, args['enable'] as bool, TraceLog());
     },
   );

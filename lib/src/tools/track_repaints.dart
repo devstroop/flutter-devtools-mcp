@@ -1,6 +1,6 @@
 import '../connection.dart';
 import '../trace.dart';
-import '../connection_factory.dart';
+import '../current_connection.dart';
 import '../mcp_transport.dart';
 
 /// MCP tool: track_repaints
@@ -46,7 +46,7 @@ Future<Map<String, Object?>> trackRepaintsImpl(
   }
 }
 
-ToolDef createTrackRepaintsTool(ConnectionFactory factory) {
+ToolDef createTrackRepaintsTool() {
   return ToolDef(
     name: 'track_repaints',
     description:
@@ -58,16 +58,11 @@ ToolDef createTrackRepaintsTool(ConnectionFactory factory) {
           'type': 'boolean',
           'description': 'true to enable repaint tracking, false to disable'
         },
-        'vmServiceUrl': {
-          'type': 'string',
-          'description':
-              'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)'
-        },
       },
       'required': ['enable'],
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      final conn = await CurrentConnection.get();
       return trackRepaintsImpl(conn, args['enable'] as bool, TraceLog());
     },
   );

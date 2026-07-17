@@ -1,5 +1,5 @@
 import '../connection.dart';
-import '../connection_factory.dart';
+import '../current_connection.dart';
 import '../mcp_transport.dart';
 import '../selectors.dart';
 import '../actions.dart' as actions;
@@ -58,7 +58,7 @@ Future<Map<String, Object?>> scrollImpl(
 }
 
 /// Create an MCP [ToolDef] for scroll.
-ToolDef createScrollTool(ConnectionFactory factory) {
+ToolDef createScrollTool() {
   return ToolDef(
     name: 'scroll',
     description: 'Scroll a scrollable widget in a given direction.',
@@ -78,15 +78,11 @@ ToolDef createScrollTool(ConnectionFactory factory) {
           'type': 'number',
           'description': 'Amount to scroll in logical pixels (default: 300).',
         },
-        'vmServiceUrl': {
-          'type': 'string',
-          'description': 'Optional VM Service WebSocket URL to target a specific Flutter debug app.',
-        },
       },
       'required': ['selector', 'direction'],
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      final conn = await CurrentConnection.get();
       return scrollImpl(
         conn,
         args['selector'] as String,

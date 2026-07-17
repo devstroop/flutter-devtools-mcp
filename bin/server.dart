@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_devtools_mcp/src/mcp_transport.dart';
-import 'package:flutter_devtools_mcp/src/connection_factory.dart';
+import 'package:flutter_devtools_mcp/src/current_connection.dart';
 
 import 'package:flutter_devtools_mcp/src/tools/snapshot.dart';
 import 'package:flutter_devtools_mcp/src/tools/inspect.dart';
@@ -29,78 +29,69 @@ import 'package:flutter_devtools_mcp/src/tools/get_parent_chain.dart';
 import 'package:flutter_devtools_mcp/src/tools/track_rebuilds.dart';
 import 'package:flutter_devtools_mcp/src/tools/track_repaints.dart';
 import 'package:flutter_devtools_mcp/src/tools/connect.dart';
-import 'package:flutter_devtools_mcp/src/tools/discover.dart';
+import 'package:flutter_devtools_mcp/src/tools/disconnect.dart';
 import 'package:flutter_devtools_mcp/src/tools/status.dart';
-import 'package:flutter_devtools_mcp/src/tools/launch.dart';
-import 'package:flutter_devtools_mcp/src/tools/launch_status.dart';
-import 'package:flutter_devtools_mcp/src/tools/stop_app.dart';
 
 /// MCP server for Flutter UI automation via DevTools VM Service extensions.
 ///
-/// Zero-config stdio server. Connects to Flutter apps via:
-/// - Per-call vmServiceUrl parameter (explicit)
-/// - mDNS auto-discovery (if vmServiceUrl omitted)
+/// Zero-config stdio server. Connect to a running Flutter debug app by
+/// passing its VM Service URL to the connect tool.
 ///
 /// Build: dart compile exe bin/server.dart -o bin/flutter_devtools_mcp_server
 void main() {
-  final factory = ConnectionFactory();
-
-  // Graceful shutdown — close all WebSocket connections
+  // Graceful shutdown — disconnect and exit
   ProcessSignal.sigint.watch().listen((_) async {
-    await factory.disconnectAll();
+    await CurrentConnection.disconnect();
     exit(0);
   });
   ProcessSignal.sigterm.watch().listen((_) async {
-    await factory.disconnectAll();
+    await CurrentConnection.disconnect();
     exit(0);
   });
 
   McpServer(
     name: 'flutter_devtools_mcp',
-    version: '0.3.0',
+    version: '0.4.0',
     tools: [
-      // Management / orchestration
-      createConnectTool(factory),
-      createDiscoverTool(factory),
-      createStatusTool(factory),
-      createLaunchTool(factory),
-      createLaunchStatusTool(factory),
-      createStopAppTool(factory),
+      // Connection management
+      createConnectTool(),
+      createDisconnectTool(),
+      createStatusTool(),
 
       // Inspection
-      createSnapshotTool(factory),
-      createInspectTool(factory),
-      createGetParentChainTool(factory),
-      createGetRenderTreeTool(factory),
-      createGetLayerTreeTool(factory),
-      createDumpSemanticsTool(factory),
+      createSnapshotTool(),
+      createInspectTool(),
+      createGetParentChainTool(),
+      createGetRenderTreeTool(),
+      createGetLayerTreeTool(),
+      createDumpSemanticsTool(),
 
       // Interaction
-      createTapTool(factory),
-      createTypeTextTool(factory),
-      createScrollTool(factory),
-      createPressBackTool(factory),
-      createScreenshotTool(factory),
+      createTapTool(),
+      createTypeTextTool(),
+      createScrollTool(),
+      createPressBackTool(),
+      createScreenshotTool(),
 
       // Flutter lifecycle
-      createHotReloadTool(factory),
-      createHotRestartTool(factory),
-      createEvaluateTool(factory),
-      createGetErrorsTool(factory),
-      createGetLogsTool(factory),
-      createGetMemoryTool(factory),
+      createHotReloadTool(),
+      createHotRestartTool(),
+      createEvaluateTool(),
+      createGetErrorsTool(),
+      createGetLogsTool(),
+      createGetMemoryTool(),
 
       // Overlay toggles
-      createToggleDarkModeTool(factory),
-      createTogglePlatformTool(factory),
-      createToggleDebugPaintTool(factory),
-      createToggleRepaintRainbowTool(factory),
-      createToggleSlowAnimationsTool(factory),
-      createTogglePerformanceOverlayTool(factory),
+      createToggleDarkModeTool(),
+      createTogglePlatformTool(),
+      createToggleDebugPaintTool(),
+      createToggleRepaintRainbowTool(),
+      createToggleSlowAnimationsTool(),
+      createTogglePerformanceOverlayTool(),
 
       // Performance tracking
-      createTrackRebuildsTool(factory),
-      createTrackRepaintsTool(factory),
+      createTrackRebuildsTool(),
+      createTrackRepaintsTool(),
     ],
   ).run();
 }

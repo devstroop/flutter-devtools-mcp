@@ -1,5 +1,5 @@
 import '../connection.dart';
-import '../connection_factory.dart';
+import '../current_connection.dart';
 import '../mcp_transport.dart';
 import '../trace.dart';
 
@@ -49,21 +49,16 @@ String _bytesToMB(int? bytes) {
   return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
 }
 
-ToolDef createGetMemoryTool(ConnectionFactory factory) {
+ToolDef createGetMemoryTool() {
   return ToolDef(
     name: 'get_memory',
     description: 'Get memory usage of the Flutter app — heap used/capacity, external.',
     inputSchema: {
       'type': 'object',
-      'properties': {
-        'vmServiceUrl': {
-          'type': 'string',
-          'description': 'VM Service WebSocket URL (optional — auto-discovers via mDNS if omitted)',
-        },
-      },
+      'properties': {},
     },
     handler: (args) async {
-      final conn = await factory.getConnection(args['vmServiceUrl'] as String?);
+      final conn = await CurrentConnection.get();
       return getMemoryImpl(conn, TraceLog());
     },
   );
