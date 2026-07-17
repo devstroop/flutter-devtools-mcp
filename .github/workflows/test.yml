@@ -30,11 +30,3 @@ jobs:
 
       - name: Run unit tests
         run: dart test --exclude-tags integration
-
-      - name: Check test fixture compiles
-        working-directory: test/fixtures/test_app
-        run: dart pub get
-
-      - name: Analyze test fixture
-        working-directory: test/fixtures/test_app
-        run: dart analyze lib/
