@@ -1,6 +1,6 @@
 {
   "name": "flutter_devtools_mcp",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "MCP server for Flutter UI automation via VM Service extensions. Connect to a running Flutter debug app, inspect widgets, tap, type, scroll, screenshot, hot reload, and more.",
   "tools": [
     {"name": "connect", "description": "Connect to a running Flutter debug app. Requires vmServiceUrl — the http:// URL from flutter run output (e.g. http://127.0.0.1:54321/abc123=/)."},
