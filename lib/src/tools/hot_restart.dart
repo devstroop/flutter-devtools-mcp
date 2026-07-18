@@ -19,6 +19,8 @@ Future<Map<String, Object?>> hotRestartImpl(
       'ext.flutter.reassemble',
       isolateId: connection.isolateId,
     );
+    // Refresh cached isolate and root library — reassemble can change them
+    await connection.refreshIsolate();
 
     trace.complete(
       action: 'hot_restart',

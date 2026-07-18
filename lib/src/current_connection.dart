@@ -74,10 +74,27 @@ class CurrentConnection {
     }
   }
 
-  /// Quick health check — ping the VM Service.
+  /// Quick health check — ping the VM Service and verify the cached isolate.
+  ///
+  /// After a hot reload failure, the WebSocket stays alive but the isolate
+  /// is gone. We must check both to detect a stale connection.
+  ///
+  /// We deliberately do NOT check isolate.runnable — the isolate is briefly
+  /// paused during hot reload, and checking runnable would cause false
+  /// negatives during that transient window, interrupting the workflow.
   static Future<bool> _isAlive(FlutterConnection conn) async {
     try {
       await conn.service.getVM();
+      // Deep check: verify the cached isolate still exists.
+      // isolateId throws StateError if _mainIsolate is null — guard here.
+      String id;
+      try {
+        id = conn.isolateId;
+      } on StateError {
+        return false;
+      }
+      if (id.isEmpty) return false;
+      await conn.service.getIsolate(id); // throws if isolate is gone
       return true;
     } catch (_) {
       return false;

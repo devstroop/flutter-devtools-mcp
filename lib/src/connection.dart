@@ -58,6 +58,14 @@ class FlutterConnection {
         'Ensure a Flutter app is running in debug mode.',
       );
     }
+    final hadMain = isolates.any((iso) => iso.name == 'main');
+    if (!hadMain) {
+      _log.warning(
+        'No isolate named "main" found — using first of ${isolates.length} '
+        'isolates: ${isolates.first.id}. '
+        'If this seems wrong, check that the Flutter app is in debug mode.',
+      );
+    }
     _mainIsolate = isolates.firstWhere(
       (iso) => iso.name == 'main',
       orElse: () => isolates.first,
@@ -71,17 +79,25 @@ class FlutterConnection {
       _rootLibraryId = rootLib.id;
       _log.fine('Root library: ${rootLib.uri} (${rootLib.id})');
     } else {
-      // Fallback: find a Flutter library from the loaded libraries
+      // Fallback: find a suitable library for evaluate() scope.
+      // Prefer the first non-Flutter package: URI (app code), then
+      // package:flutter/ itself, then the first available library.
       final libs = isolate.libraries ?? [];
+      String? packageUri;
       for (final lib in libs) {
         final uri = lib.uri ?? '';
         if (uri.startsWith('package:flutter/')) {
-          _rootLibraryId = lib.id;
-          _log.fine('Using Flutter library: $uri (${lib.id})');
-          break;
+          _rootLibraryId ??= lib.id;
+        } else if (uri.startsWith('package:') && packageUri == null) {
+          packageUri = lib.id;
         }
       }
-      _rootLibraryId ??= libs.isNotEmpty ? libs.first.id : null;
+      if (packageUri != null) {
+        _rootLibraryId = packageUri;
+        _log.fine('Using package library for evaluate(): $packageUri');
+      } else if (libs.isNotEmpty && _rootLibraryId == null) {
+        _rootLibraryId = libs.first.id;
+      }
     }
   }
 
@@ -117,6 +133,102 @@ class FlutterConnection {
   /// Trigger hot reload.
   Future<ReloadReport> hotReload() {
     return service.reloadSources(isolateId);
+  }
+
+  /// Re-discover the main isolate and root library after a hot reload/restart.
+  ///
+  /// Hot reload can change loaded libraries (new `package:` imports), making
+  /// the cached `_rootLibraryId` stale. Call this after every reload or
+  /// reassemble to keep `evaluate()` working.
+  ///
+  /// Unlike `connect()`, this does NOT assume the isolate ID has changed —
+  /// hot reload and reassemble keep the same isolate ID. This method refreshes
+  /// `_rootLibraryId` and verifies the isolate is still alive.
+  Future<void> refreshIsolate() async {
+    _log.fine('Refreshing isolate state...');
+    try {
+      final vm = await _service!.getVM();
+      final isolates = vm.isolates;
+      IsolateRef? newIsolate;
+      if (isolates != null && isolates.isNotEmpty) {
+        if (!isolates.any((iso) => iso.name == 'main')) {
+          _log.warning(
+            'No isolate named "main" during refresh — using first of '
+            '${isolates.length} isolates: ${isolates.first.id}.',
+          );
+        }
+        newIsolate = isolates.firstWhere(
+          (iso) => iso.name == 'main',
+          orElse: () => isolates.first,
+        );
+      }
+      if (newIsolate == null) {
+        _log.warning('No isolates found during refresh — isolate may be dead');
+        return;
+      }
+
+      final newId = newIsolate.id;
+      if (newId == null) {
+        _log.warning('New isolate has no id — cannot refresh');
+        return;
+      }
+
+      // Resolve new root library first, then swap atomically.
+      // This ensures _mainIsolate and _rootLibraryId are always in sync.
+      String? newRootId;
+      final isolate = await _service!.getIsolate(newId);
+      final rootLib = isolate.rootLib;
+      if (rootLib != null) {
+        newRootId = rootLib.id;
+        _log.fine('Resolved root library: ${rootLib.uri} (${rootLib.id})');
+      } else {
+        // Fallback: find a suitable library to use as evaluation scope.
+        // Prefer the first package: URI (likely app code), then any
+        // package:flutter/ library as a last resort. This mirrors the
+        // same fallback used in connect().
+        final libs = isolate.libraries ?? [];
+        String? packageUri;
+        for (final lib in libs) {
+          final uri = lib.uri ?? '';
+          if (uri.startsWith('package:flutter/')) {
+            // Remember Flutter framework as fallback
+            newRootId ??= lib.id;
+          } else if (uri.startsWith('package:') && packageUri == null) {
+            // Prefer first app/library package: URI
+            packageUri = lib.id;
+          }
+        }
+        if (packageUri != null) {
+          newRootId = packageUri;
+          _log.fine('Resolved package library for evaluate(): $packageUri');
+        } else if (newRootId != null) {
+          _log.fine('Resolved Flutter framework library: $newRootId');
+        } else {
+          // No usable library found — invalidate cached root library.
+          // Keeping a stale ID from a different isolate would cause cryptic
+          // failures in evaluate(); nulling it produces a clear error.
+          _log.warning(
+            'Could not find a suitable root library after refresh. '
+            'Invalidating _rootLibraryId (was $_rootLibraryId). '
+            'Scanned ${libs.length} libraries, none matched package:flutter/.',
+          );
+          newRootId = null;
+        }
+      }
+
+      // Atomic swap: both fields updated together after all async work succeeds.
+      // newRootId is null when rootLib.id was null or when no suitable fallback
+      // was found — in that case we explicitly invalidate _rootLibraryId so
+      // evaluate() gives a clear error rather than using a stale reference.
+      _mainIsolate = newIsolate;
+      _rootLibraryId = newRootId;
+      _log.info(
+          'Refresh complete. Isolate: $newId, rootLibrary: $_rootLibraryId');
+    } catch (e) {
+      _log.warning('Failed to refresh isolate state: $e');
+      // Do NOT rethrow — a failed refresh should not crash the caller.
+      // The stale connection will be detected by _isAlive() on next use.
+    }
   }
 
   /// Evaluate a Dart expression in the main isolate's root library scope.

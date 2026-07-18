@@ -14,6 +14,8 @@ Future<Map<String, Object?>> hotReloadImpl(
 
   try {
     final report = await connection.hotReload();
+    // Refresh cached isolate and root library — hot reload can change them
+    await connection.refreshIsolate();
 
     trace.complete(
       action: 'hot_reload',
