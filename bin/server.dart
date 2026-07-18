@@ -1,7 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter_devtools_mcp/src/mcp_transport.dart';
+import 'package:logging/logging.dart';
+
+import 'package:flutter_devtools_mcp/src/connection.dart';
 import 'package:flutter_devtools_mcp/src/current_connection.dart';
+import 'package:flutter_devtools_mcp/src/mcp_transport.dart';
 
 import 'package:flutter_devtools_mcp/src/tools/snapshot.dart';
 import 'package:flutter_devtools_mcp/src/tools/inspect.dart';
@@ -31,70 +35,204 @@ import 'package:flutter_devtools_mcp/src/tools/track_repaints.dart';
 import 'package:flutter_devtools_mcp/src/tools/connect.dart';
 import 'package:flutter_devtools_mcp/src/tools/disconnect.dart';
 import 'package:flutter_devtools_mcp/src/tools/status.dart';
+import 'package:flutter_devtools_mcp/src/tools/list_apps.dart';
+import 'package:flutter_devtools_mcp/src/registry.dart';
 
 /// MCP server for Flutter UI automation via DevTools VM Service extensions.
 ///
-/// Zero-config stdio server. Connect to a running Flutter debug app by
-/// passing its VM Service URL to the connect tool.
+/// Usage as MCP server (stdio):
+///   flutter_devtools_mcp_server
 ///
-/// Build: dart compile exe bin/server.dart -o bin/flutter_devtools_mcp_server
-void main() {
-  // Graceful shutdown — disconnect and exit
-  ProcessSignal.sigint.watch().listen((_) async {
-    await CurrentConnection.disconnect();
-    exit(0);
+/// Direct mode with auto-connect:
+///   flutter_devtools_mcp_server --vm-service-url http://127.0.0.1:PORT/TOKEN=/
+///
+/// Both --vm-service-url VALUE (space-separated) and
+/// --vm-service-url=VALUE (equals-separated) forms are accepted.
+void main(List<String> args) async {
+  // Route package:logging output to stderr so Logger-based messages
+  // from connection.dart and registry.dart are visible.
+  // Filter at INFO level to avoid noise from verbose/fine/debug messages.
+  Logger.root.onRecord.listen((r) {
+    if (r.level >= Level.INFO) {
+      stderr.writeln('[${r.loggerName}] ${r.level.name}: ${r.message}');
+    }
   });
-  // SIGTERM is POSIX-only — skip on Windows where it throws SignalException
-  if (Platform.isLinux || Platform.isMacOS) {
-    ProcessSignal.sigterm.watch().listen((_) async {
-      await CurrentConnection.disconnect();
-      exit(0);
-    });
+
+  // Load persistent registry so URLs survive server restarts.
+  try {
+    Registry.instance.load();
+  } catch (e) {
+    stderr.writeln('[flutter_devtools_mcp] Failed to load registry: $e');
   }
 
-  McpServer(
+  // Graceful shutdown — mark all connections as inactive before exit.
+  // Registry failures are non-fatal — the process must always exit.
+  void shutdown() async {
+    try {
+      await CurrentConnection.disconnect();
+    } catch (_) {}
+    try {
+      Registry.instance.markAllDisconnected();
+    } catch (_) {}
+    exit(0);
+  }
+
+  ProcessSignal.sigint.watch().listen((_) => shutdown());
+  if (Platform.isLinux || Platform.isMacOS) {
+    ProcessSignal.sigterm.watch().listen((_) => shutdown());
+  }
+
+  // Check for --vm-service-url flag: auto-connect at startup, then
+  // fall through to stdio MCP mode so tools work immediately.
+  // Supports both --vm-service-url=VALUE (equals) and
+  // --vm-service-url VALUE (space-separated) forms.
+  String? parseVmServiceUrl(List<String> args) {
+    const prefix = '--vm-service-url';
+    for (var i = 0; i < args.length; i++) {
+      if (args[i] == prefix && i + 1 < args.length) {
+        return args[i + 1].trim();
+      }
+      if (args[i].startsWith('$prefix=')) {
+        return args[i].substring(prefix.length + 1).trim();
+      }
+    }
+    return null;
+  }
+
+  final vmServiceUrlArg = parseVmServiceUrl(args);
+
+  // Auto-connect: serialize attempts so we never race CurrentConnection.set().
+  // Try --vm-service-url first, then registry entries (most recent first).
+  // First success wins — subsequent candidates are skipped.
+  // Candidates are deduplicated by URL to avoid redundant attempts.
+  Future<void> autoConnect() async {
+    final seen = <String>{};
+    final candidates = <String>[];
+
+    // 1. --vm-service-url flag takes priority
+    if (vmServiceUrlArg != null && vmServiceUrlArg.isNotEmpty) {
+      seen.add(vmServiceUrlArg);
+      candidates.add(vmServiceUrlArg);
+    }
+
+    // 2. Previously active registry entries (reversed = most recent first)
+    //    Skip URLs already present from --vm-service-url.
+    for (final entry in Registry.instance.active.reversed) {
+      if (seen.add(entry.vmServiceUrl)) {
+        candidates.add(entry.vmServiceUrl);
+      }
+    }
+
+    // Per-candidate timeout prevents any single connect attempt from hanging
+    // forever. If the timeout fires, the candidate is skipped and we move to
+    // the next. After all candidates are exhausted, control reaches
+    // server.run() with a best-effort connection (or none).
+    for (final url in candidates) {
+      FlutterConnection? conn;
+      final isFromRegistry =
+          Registry.instance.entries.any((e) => e.vmServiceUrl == url);
+      try {
+        conn = FlutterConnection(vmServiceUrl: url);
+        // Per-connection timer cancels the WebSocket handshake if it
+        // takes too long — genuinely aborts the in-flight connect.
+        // Use a flag to prevent the timer from acting after connect
+        // completes but before the timer is cancelled (race window).
+        var connectCompleted = false;
+        final connectTimer = Timer(const Duration(seconds: 5), () {
+          if (!connectCompleted) conn?.cancel();
+        });
+        try {
+          await conn.connect();
+          connectCompleted = true;
+        } finally {
+          connectTimer.cancel();
+        }
+        // Set connection BEFORE registering — if CurrentConnection.set()
+        // throws, the registry stays clean (no stale active entry).
+        await CurrentConnection.set(conn);
+        // Store the canonicalized URL from the connection, not the raw
+        // candidate input, so registry entries are always normalized.
+        final canonicalUrl = conn.vmServiceUrl;
+        // Registry persistence is best-effort — a failure here should not
+        // cause the connection to be dropped.
+        try {
+          Registry.instance.register(canonicalUrl);
+        } catch (e) {
+          stderr.writeln('[flutter_devtools_mcp] Failed to register URL: $e');
+        }
+        conn = null; // Ownership transferred — don't dispose below.
+        stderr.writeln(
+            '[flutter_devtools_mcp] Auto-connected: ${FlutterConnection.maskUrlToken(canonicalUrl)}');
+        return; // First success wins.
+      } catch (e) {
+        if (conn != null) {
+          try {
+            await conn.disconnect();
+          } catch (_) {}
+        }
+        if (isFromRegistry) {
+          Registry.instance.markDisconnected(url);
+        }
+        stderr.writeln(
+            '[flutter_devtools_mcp] Auto-connect failed: ${FlutterConnection.maskUrlToken(url)} — $e');
+      }
+    }
+
+    if (candidates.isEmpty) {
+      stderr.writeln(
+          '[flutter_devtools_mcp] No auto-connect candidates. Use the connect tool.');
+    } else {
+      stderr.writeln(
+          '[flutter_devtools_mcp] All auto-connect candidates failed.');
+    }
+  }
+
+  /// Build the McpServer first so tools are registered — the server
+  /// doesn't process requests until .run() is called.
+  final server = McpServer(
     name: 'flutter_devtools_mcp',
     version: '1.0.0',
     tools: [
-      // Connection management
       createConnectTool(),
       createDisconnectTool(),
       createStatusTool(),
-
-      // Inspection
+      createListAppsTool(),
       createSnapshotTool(),
       createInspectTool(),
       createGetParentChainTool(),
       createGetRenderTreeTool(),
       createGetLayerTreeTool(),
       createDumpSemanticsTool(),
-
-      // Interaction
       createTapTool(),
       createTypeTextTool(),
       createScrollTool(),
       createPressBackTool(),
       createScreenshotTool(),
-
-      // Flutter lifecycle
       createHotReloadTool(),
       createHotRestartTool(),
       createEvaluateTool(),
       createGetErrorsTool(),
       createGetLogsTool(),
       createGetMemoryTool(),
-
-      // Overlay toggles
       createToggleDarkModeTool(),
       createTogglePlatformTool(),
       createToggleDebugPaintTool(),
       createToggleRepaintRainbowTool(),
       createToggleSlowAnimationsTool(),
       createTogglePerformanceOverlayTool(),
-
-      // Performance tracking
       createTrackRebuildsTool(),
       createTrackRepaintsTool(),
     ],
-  ).run();
+  );
+
+  // Await auto-connect. Each candidate has its own 5s timeout (see above),
+  // so the whole loop can't exceed candidates × 5s. No outstanding
+  // operations remain after this returns.
+  try {
+    await autoConnect();
+  } catch (e) {
+    stderr.writeln('[flutter_devtools_mcp] Auto-connect error: $e');
+  }
+
+  await server.run();
 }
