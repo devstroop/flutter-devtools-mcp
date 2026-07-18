@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:logging/logging.dart';
+
 import 'package:flutter_devtools_mcp/src/connection.dart';
 import 'package:flutter_devtools_mcp/src/current_connection.dart';
 import 'package:flutter_devtools_mcp/src/mcp_transport.dart';
@@ -47,6 +49,15 @@ import 'package:flutter_devtools_mcp/src/registry.dart';
 /// Both --vm-service-url VALUE (space-separated) and
 /// --vm-service-url=VALUE (equals-separated) forms are accepted.
 void main(List<String> args) async {
+  // Route package:logging output to stderr so Logger-based messages
+  // from connection.dart and registry.dart are visible.
+  // Filter at INFO level to avoid noise from verbose/fine/debug messages.
+  Logger.root.onRecord.listen((r) {
+    if (r.level >= Level.INFO) {
+      stderr.writeln('[${r.loggerName}] ${r.level.name}: ${r.message}');
+    }
+  });
+
   // Load persistent registry so URLs survive server restarts.
   try {
     Registry.instance.load();
