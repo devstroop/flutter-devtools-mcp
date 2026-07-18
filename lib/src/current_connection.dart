@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:io';
+
 import 'connection.dart';
+import 'managed_run.dart';
 import 'registry.dart';
 
 /// Holds the single active [FlutterConnection] for this MCP server.
@@ -87,7 +90,29 @@ class CurrentConnection {
     }
 
     if (c != null) {
-      await c.disconnect();
+      try {
+        await c.disconnect();
+      } finally {
+        // If a `flutter run` process was started by the flutter_run tool,
+        // kill it so the port is freed and no orphan processes remain.
+        // Runs even if disconnect throws, preventing process leaks.
+        await _killManagedProcess();
+      }
+    } else {
+      // No connection to close, but may still have a managed process.
+      await _killManagedProcess();
+    }
+  }
+
+  /// Kill the managed `flutter run` process if one is running.
+  /// Best-effort — failures are logged but never propagated.
+  static Future<void> _killManagedProcess() async {
+    try {
+      await ManagedFlutterRun.kill();
+    } catch (e) {
+      stderr.writeln(
+        '[current_connection] Failed to kill flutter run: $e',
+      );
     }
   }
 

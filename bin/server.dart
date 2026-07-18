@@ -36,6 +36,7 @@ import 'package:flutter_devtools_mcp/src/tools/connect.dart';
 import 'package:flutter_devtools_mcp/src/tools/disconnect.dart';
 import 'package:flutter_devtools_mcp/src/tools/status.dart';
 import 'package:flutter_devtools_mcp/src/tools/list_apps.dart';
+import 'package:flutter_devtools_mcp/src/tools/flutter_run.dart';
 import 'package:flutter_devtools_mcp/src/registry.dart';
 
 /// MCP server for Flutter UI automation via DevTools VM Service extensions.
@@ -197,6 +198,7 @@ void main(List<String> args) async {
       createDisconnectTool(),
       createStatusTool(),
       createListAppsTool(),
+      createFlutterRunTool(),
       createSnapshotTool(),
       createInspectTool(),
       createGetParentChainTool(),
