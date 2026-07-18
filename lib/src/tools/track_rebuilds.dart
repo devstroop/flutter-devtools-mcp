@@ -1,20 +1,18 @@
+import 'package:logging/logging.dart';
+
 import '../connection.dart';
-import '../trace.dart';
 import '../current_connection.dart';
 import '../mcp_transport.dart';
 
+final _log = Logger('TrackRebuilds');
+
 /// MCP tool: track_rebuilds
 ///
-/// Toggle tracking of widget rebuilds. When enabled, Flutter annotates
-/// widgets with rebuild counts. Use the screenshot tool to capture the
-/// visual overlay, or snapshot to see if the tree has changed.
+/// Toggle tracking of widget rebuilds.
 Future<Map<String, Object?>> trackRebuildsImpl(
   FlutterConnection connection,
   bool enable,
-  TraceLog trace,
 ) async {
-  final startTime = trace.start();
-
   try {
     await connection.service.callServiceExtension(
       'ext.flutter.inspector.trackRebuildDirtyWidgets',
@@ -22,13 +20,7 @@ Future<Map<String, Object?>> trackRebuildsImpl(
       args: {'enabled': enable.toString()},
     );
 
-    trace.complete(
-      action: 'track_rebuilds',
-      startTimeMs: startTime,
-      target: enable.toString(),
-      result: 'success',
-    );
-
+    _log.info('Rebuild tracking: $enable');
     return {
       'status': 'success',
       'tracking': enable,
@@ -37,12 +29,7 @@ Future<Map<String, Object?>> trackRebuildsImpl(
           : 'Rebuild tracking disabled.',
     };
   } catch (e) {
-    trace.complete(
-      action: 'track_rebuilds',
-      startTimeMs: startTime,
-      result: 'error',
-      error: e.toString(),
-    );
+    _log.warning('Track rebuilds failed: $e');
     return {'status': 'error', 'error': e.toString()};
   }
 }
@@ -64,7 +51,7 @@ ToolDef createTrackRebuildsTool() {
     },
     handler: (args) async {
       final conn = await CurrentConnection.get();
-      return trackRebuildsImpl(conn, args['enable'] as bool, TraceLog());
+      return trackRebuildsImpl(conn, args['enable'] as bool);
     },
   );
 }

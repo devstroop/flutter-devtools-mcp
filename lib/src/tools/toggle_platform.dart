@@ -1,20 +1,18 @@
+import 'package:logging/logging.dart';
+
 import '../connection.dart';
 import '../current_connection.dart';
 import '../mcp_transport.dart';
-import '../trace.dart';
+
+final _log = Logger('TogglePlatform');
 
 /// MCP tool impl: toggle_platform
 ///
 /// Override the target platform for the Flutter app.
-/// Accepts: 'android', 'ios', 'fuchsia', 'linux', 'macOS', 'windows'.
 Future<Map<String, Object?>> togglePlatformImpl(
   FlutterConnection connection,
   String platform,
-  TraceLog trace,
 ) async {
-  final startTime = trace.start();
-
-  // Map user-friendly names to TargetPlatform enum values
   final platformMap = {
     'android': 'android',
     'ios': 'iOS',
@@ -26,13 +24,6 @@ Future<Map<String, Object?>> togglePlatformImpl(
 
   final enumValue = platformMap[platform.toLowerCase()];
   if (enumValue == null) {
-    trace.complete(
-      action: 'toggle_platform',
-      startTimeMs: startTime,
-      target: platform,
-      result: 'error',
-      error: 'Invalid platform',
-    );
     return {
       'status': 'error',
       'error': 'Invalid platform "$platform". '
@@ -48,26 +39,14 @@ Future<Map<String, Object?>> togglePlatformImpl(
     );
 
     final current = response.json?['value'] as String?;
-
-    trace.complete(
-      action: 'toggle_platform',
-      startTimeMs: startTime,
-      target: platform,
-      result: 'success',
-    );
+    _log.info('Platform: ${current ?? enumValue}');
 
     return {
       'status': 'success',
       'platform': current ?? enumValue,
     };
   } catch (e) {
-    trace.complete(
-      action: 'toggle_platform',
-      startTimeMs: startTime,
-      target: platform,
-      result: 'error',
-      error: e.toString(),
-    );
+    _log.warning('Toggle platform failed: $e');
     return {'status': 'error', 'error': e.toString()};
   }
 }
@@ -89,7 +68,7 @@ ToolDef createTogglePlatformTool() {
     },
     handler: (args) async {
       final conn = await CurrentConnection.get();
-      return togglePlatformImpl(conn, args['platform'] as String, TraceLog());
+      return togglePlatformImpl(conn, args['platform'] as String);
     },
   );
 }

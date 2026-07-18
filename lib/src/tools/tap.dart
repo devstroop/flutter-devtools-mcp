@@ -1,10 +1,13 @@
+import 'package:logging/logging.dart';
+
 import '../connection.dart';
 import '../current_connection.dart';
 import '../mcp_transport.dart';
 import '../selectors.dart';
 import '../actions.dart' as actions;
 import '../retry.dart';
-import '../trace.dart';
+
+final _log = Logger('Tap');
 
 /// MCP tool: tap
 ///
@@ -13,16 +16,11 @@ import '../trace.dart';
 Future<Map<String, Object?>> tapImpl(
   FlutterConnection connection,
   String selectorStr,
-  TraceLog trace,
 ) async {
-  final startTime = trace.start();
-  var retryCount = 0;
-
   try {
     final selector = Selector.parse(selectorStr);
 
     final result = await withRetry(() async {
-      retryCount++;
       final node = await resolveSelector(connection, selector);
       final bounds = await actions.getBounds(connection, node);
       final check = await actions.checkActionability(connection, node, bounds);
@@ -33,28 +31,10 @@ Future<Map<String, Object?>> tapImpl(
       return (node: node, bounds: bounds);
     }, description: 'tap($selectorStr)');
 
-    trace.complete(
-      action: 'tap',
-      startTimeMs: startTime,
-      target: selectorStr,
-      selector: selectorStr,
-      resolvedNode: result.node.toJson(),
-      bounds: result.bounds.toJson(),
-      retryCount: retryCount - 1,
-      result: 'success',
-    );
-
+    _log.info('Tapped $selectorStr → ${result.node.type}');
     return {'status': 'success', 'node': result.node.toJson()};
   } catch (e) {
-    trace.complete(
-      action: 'tap',
-      startTimeMs: startTime,
-      target: selectorStr,
-      selector: selectorStr,
-      retryCount: retryCount,
-      result: 'error',
-      error: e.toString(),
-    );
+    _log.warning('Tap $selectorStr failed: $e');
     return {'status': 'error', 'error': e.toString()};
   }
 }
@@ -77,7 +57,7 @@ ToolDef createTapTool() {
     },
     handler: (args) async {
       final conn = await CurrentConnection.get();
-      return tapImpl(conn, args['selector'] as String, TraceLog());
+      return tapImpl(conn, args['selector'] as String);
     },
   );
 }

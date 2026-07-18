@@ -5,22 +5,64 @@ import '../current_connection.dart';
 import '../mcp_transport.dart';
 import '../registry.dart';
 
-/// MCP tool impl: connect
-///
-/// Connect to a running Flutter debug app via its VM Service URL.
-/// The URL is printed by `flutter run` — copy the entire http:// URL
-/// including the token (e.g. http://127.0.0.1:54321/abc123=/).
-ToolDef createConnectTool() {
-  return ToolDef(
-    name: 'connect',
-    description:
-        'Connect to a running Flutter debug app via its VM Service URL. '
-        'When you run flutter run and see '
-        '"A Dart VM Service is available at: http://127.0.0.1:PORT/TOKEN=/" '
-        'in the terminal, copy that EXACT http:// URL (with the token) '
-        'and pass it as vmServiceUrl. '
-        'Auto-normalizes http:// to ws:// and appends /ws.',
-    inputSchema: {
+/// Shared handler for attach/connect tools.
+Future<Map<String, dynamic>> _connectHandler(Map<String, dynamic> args) async {
+  final url = (args['vmServiceUrl'] as String?)?.trim();
+  if (url == null || url.isEmpty) {
+    return {
+      'isError': true,
+      'content': [
+        {
+          'type': 'text',
+          'text': 'Error: vmServiceUrl is required.\n\n'
+              'Run your Flutter app with:\n'
+              '  flutter run --debug\n\n'
+              'Then paste the URL from the output:\n'
+              '  attach(vmServiceUrl: "http://127.0.0.1:54321/abc123=/")\n'
+              '  connect(vmServiceUrl: "http://127.0.0.1:54321/abc123=/")\n'
+              '                👆 copy the whole http:// URL here',
+        },
+      ],
+    };
+  }
+
+  try {
+    final conn = FlutterConnection(vmServiceUrl: url);
+    await conn.connect();
+    // Set connection BEFORE registering so a failed set() doesn't
+    // leave a stale active entry in the registry.
+    await CurrentConnection.set(conn);
+    // Registry persistence is best-effort — a failure here should not
+    // cause the connection to be dropped.
+    // Store the canonicalized URL (after normalization) so registry
+    // entries are always consistent.
+    try {
+      Registry.instance.register(conn.vmServiceUrl);
+    } catch (e) {
+      stderr.writeln('[flutter_devtools_mcp] Failed to register URL: $e');
+    }
+    return {
+      'content': [
+        {
+          'type': 'text',
+          'text': '{"status":"connected","url":"${conn.vmServiceUrl}"}',
+        },
+      ],
+    };
+  } catch (e) {
+    return {
+      'isError': true,
+      'content': [
+        {
+          'type': 'text',
+          'text': '$e',
+        },
+      ],
+    };
+  }
+}
+
+Map<String, Object?> _connectInputSchema() => {
       'type': 'object',
       'properties': {
         'vmServiceUrl': {
@@ -31,60 +73,34 @@ ToolDef createConnectTool() {
         },
       },
       'required': ['vmServiceUrl'],
-    },
-    handler: (args) async {
-      final url = (args['vmServiceUrl'] as String?)?.trim();
-      if (url == null || url.isEmpty) {
-        return {
-          'isError': true,
-          'content': [
-            {
-              'type': 'text',
-              'text': 'Error: vmServiceUrl is required.\n\n'
-                  'Run your Flutter app with:\n'
-                  '  flutter run --debug\n\n'
-                  'Then paste the URL from the output:\n'
-                  '  connect(vmServiceUrl: "http://127.0.0.1:54321/abc123=/")\n'
-                  '                👆 copy the whole http:// URL here',
-            },
-          ],
-        };
-      }
+    };
 
-      try {
-        final conn = FlutterConnection(vmServiceUrl: url);
-        await conn.connect();
-        // Set connection BEFORE registering so a failed set() doesn't
-        // leave a stale active entry in the registry.
-        await CurrentConnection.set(conn);
-        // Registry persistence is best-effort — a failure here should not
-        // cause the connection to be dropped.
-        // Store the canonicalized URL (after normalization) so registry
-        // entries are always consistent.
-        try {
-          Registry.instance.register(conn.vmServiceUrl);
-        } catch (e) {
-          stderr.writeln('[flutter_devtools_mcp] Failed to register URL: $e');
-        }
-        return {
-          'content': [
-            {
-              'type': 'text',
-              'text': '{"status":"connected","url":"${conn.vmServiceUrl}"}',
-            },
-          ],
-        };
-      } catch (e) {
-        return {
-          'isError': true,
-          'content': [
-            {
-              'type': 'text',
-              'text': '$e',
-            },
-          ],
-        };
-      }
-    },
+/// MCP tool: attach (canonical name)
+///
+/// Connect to a running Flutter debug app via its VM Service URL.
+ToolDef createAttachTool() {
+  return ToolDef(
+    name: 'attach',
+    description:
+        'Connect to a running Flutter debug app via its VM Service URL. '
+        'When you run flutter run and see '
+        '"A Dart VM Service is available at: http://127.0.0.1:PORT/TOKEN=/" '
+        'in the terminal, copy that EXACT http:// URL (with the token) '
+        'and pass it as vmServiceUrl. '
+        'Auto-normalizes http:// to ws:// and appends /ws. '
+        'Alias: connect.',
+    inputSchema: _connectInputSchema(),
+    handler: _connectHandler,
+  );
+}
+
+/// MCP tool: connect (alias for attach)
+ToolDef createConnectTool() {
+  return ToolDef(
+    name: 'connect',
+    description: 'Connect to a running Flutter debug app. '
+        'Alias for attach.',
+    inputSchema: _connectInputSchema(),
+    handler: _connectHandler,
   );
 }

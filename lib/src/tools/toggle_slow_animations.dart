@@ -1,27 +1,19 @@
+import 'package:logging/logging.dart';
+
 import '../connection.dart';
-import '../trace.dart';
 import '../current_connection.dart';
 import '../mcp_transport.dart';
+
+final _log = Logger('ToggleSlowAnim');
 
 /// MCP tool: toggle_slow_animations
 ///
 /// Slow down or speed up animations by adjusting the time dilation factor.
-/// A factor of 1.0 is normal speed, 2.0 is half speed, 5.0 is 5× slower, etc.
-/// Useful for debugging animation issues or verifying transition behavior.
 Future<Map<String, Object?>> toggleSlowAnimationsImpl(
   FlutterConnection connection,
   double timeDilation,
-  TraceLog trace,
 ) async {
-  final startTime = trace.start();
-
   if (timeDilation <= 0) {
-    trace.complete(
-      action: 'toggle_slow_animations',
-      startTimeMs: startTime,
-      result: 'error',
-      error: 'Invalid time dilation',
-    );
     return {
       'status': 'error',
       'error': 'Time dilation must be positive. Use 1.0 for normal speed.',
@@ -37,13 +29,7 @@ Future<Map<String, Object?>> toggleSlowAnimationsImpl(
 
     final current = response.json?['timeDilation'] as String?;
     final factor = current != null ? double.tryParse(current) : null;
-
-    trace.complete(
-      action: 'toggle_slow_animations',
-      startTimeMs: startTime,
-      target: timeDilation.toString(),
-      result: 'success',
-    );
+    _log.info('Time dilation: ${factor ?? timeDilation}');
 
     return {
       'status': 'success',
@@ -53,12 +39,7 @@ Future<Map<String, Object?>> toggleSlowAnimationsImpl(
           : 'Animations slowed to $timeDilation× dilation.',
     };
   } catch (e) {
-    trace.complete(
-      action: 'toggle_slow_animations',
-      startTimeMs: startTime,
-      result: 'error',
-      error: e.toString(),
-    );
+    _log.warning('Toggle slow animations failed: $e');
     return {'status': 'error', 'error': e.toString()};
   }
 }
@@ -81,7 +62,7 @@ ToolDef createToggleSlowAnimationsTool() {
     handler: (args) async {
       final conn = await CurrentConnection.get();
       return toggleSlowAnimationsImpl(
-          conn, (args['timeDilation'] as num).toDouble(), TraceLog());
+          conn, (args['timeDilation'] as num).toDouble());
     },
   );
 }

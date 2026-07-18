@@ -1,20 +1,19 @@
+import 'package:logging/logging.dart';
+
 import '../connection.dart';
-import '../trace.dart';
 import '../current_connection.dart';
 import '../mcp_transport.dart';
+
+final _log = Logger('ToggleDebugPaint');
 
 /// MCP tool: toggle_debug_paint
 ///
 /// Toggle debug paint overlays — shows widget boundaries, padding, and
-/// alignment visualizations. Take a screenshot after enabling to see the
-/// overlay.
+/// alignment visualizations.
 Future<Map<String, Object?>> toggleDebugPaintImpl(
   FlutterConnection connection,
   bool enable,
-  TraceLog trace,
 ) async {
-  final startTime = trace.start();
-
   try {
     final response = await connection.service.callServiceExtension(
       'ext.flutter.debugPaint',
@@ -23,13 +22,7 @@ Future<Map<String, Object?>> toggleDebugPaintImpl(
     );
 
     final current = response.json?['enabled'] as String?;
-
-    trace.complete(
-      action: 'toggle_debug_paint',
-      startTimeMs: startTime,
-      target: enable.toString(),
-      result: 'success',
-    );
+    _log.info('Debug paint: ${(current ?? enable.toString()) == 'true'}');
 
     return {
       'status': 'success',
@@ -39,12 +32,7 @@ Future<Map<String, Object?>> toggleDebugPaintImpl(
           : 'Debug paint disabled.',
     };
   } catch (e) {
-    trace.complete(
-      action: 'toggle_debug_paint',
-      startTimeMs: startTime,
-      result: 'error',
-      error: e.toString(),
-    );
+    _log.warning('Toggle debug paint failed: $e');
     return {'status': 'error', 'error': e.toString()};
   }
 }
@@ -66,7 +54,7 @@ ToolDef createToggleDebugPaintTool() {
     },
     handler: (args) async {
       final conn = await CurrentConnection.get();
-      return toggleDebugPaintImpl(conn, args['enable'] as bool, TraceLog());
+      return toggleDebugPaintImpl(conn, args['enable'] as bool);
     },
   );
 }

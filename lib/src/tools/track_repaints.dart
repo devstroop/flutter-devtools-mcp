@@ -1,19 +1,18 @@
+import 'package:logging/logging.dart';
+
 import '../connection.dart';
-import '../trace.dart';
 import '../current_connection.dart';
 import '../mcp_transport.dart';
 
+final _log = Logger('TrackRepaints');
+
 /// MCP tool: track_repaints
 ///
-/// Toggle repaint tracking. When enabled, Flutter shows which render objects
-/// are repainting. Combine with screenshot to identify excessive repaints.
+/// Toggle repaint tracking.
 Future<Map<String, Object?>> trackRepaintsImpl(
   FlutterConnection connection,
   bool enable,
-  TraceLog trace,
 ) async {
-  final startTime = trace.start();
-
   try {
     await connection.service.callServiceExtension(
       'ext.flutter.inspector.trackRepaintWidgets',
@@ -21,13 +20,7 @@ Future<Map<String, Object?>> trackRepaintsImpl(
       args: {'enabled': enable.toString()},
     );
 
-    trace.complete(
-      action: 'track_repaints',
-      startTimeMs: startTime,
-      target: enable.toString(),
-      result: 'success',
-    );
-
+    _log.info('Repaint tracking: $enable');
     return {
       'status': 'success',
       'tracking': enable,
@@ -36,12 +29,7 @@ Future<Map<String, Object?>> trackRepaintsImpl(
           : 'Repaint tracking disabled.',
     };
   } catch (e) {
-    trace.complete(
-      action: 'track_repaints',
-      startTimeMs: startTime,
-      result: 'error',
-      error: e.toString(),
-    );
+    _log.warning('Track repaints failed: $e');
     return {'status': 'error', 'error': e.toString()};
   }
 }
@@ -63,7 +51,7 @@ ToolDef createTrackRepaintsTool() {
     },
     handler: (args) async {
       final conn = await CurrentConnection.get();
-      return trackRepaintsImpl(conn, args['enable'] as bool, TraceLog());
+      return trackRepaintsImpl(conn, args['enable'] as bool);
     },
   );
 }

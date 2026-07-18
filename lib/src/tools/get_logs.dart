@@ -3,7 +3,6 @@ import 'dart:async';
 import '../connection.dart';
 import '../current_connection.dart';
 import '../mcp_transport.dart';
-import '../trace.dart';
 
 /// MCP tool: get_logs
 ///
@@ -13,9 +12,7 @@ import '../trace.dart';
 /// output, debug messages, and runtime warnings.
 Future<Map<String, Object?>> getLogsImpl(
   FlutterConnection connection,
-  TraceLog trace,
 ) async {
-  final startTime = trace.start();
   final logs = <Map<String, Object?>>[];
   StreamSubscription<dynamic>? stdoutSub;
   StreamSubscription<dynamic>? stderrSub;
@@ -86,12 +83,6 @@ Future<Map<String, Object?>> getLogsImpl(
     // Give a window for events to arrive
     await Future.delayed(const Duration(milliseconds: 500));
 
-    trace.complete(
-      action: 'get_logs',
-      startTimeMs: startTime,
-      result: 'success',
-    );
-
     return {
       'status': 'success',
       'logCount': logs.length,
@@ -100,12 +91,6 @@ Future<Map<String, Object?>> getLogsImpl(
         'message': 'No log output captured in the collection window.',
     };
   } catch (e) {
-    trace.complete(
-      action: 'get_logs',
-      startTimeMs: startTime,
-      result: 'error',
-      error: e.toString(),
-    );
     return {'status': 'error', 'error': e.toString()};
   } finally {
     // Ensure subscriptions are always cancelled, even on error
@@ -126,7 +111,7 @@ ToolDef createGetLogsTool() {
     },
     handler: (args) async {
       final conn = await CurrentConnection.get();
-      return getLogsImpl(conn, TraceLog());
+      return getLogsImpl(conn);
     },
   );
 }

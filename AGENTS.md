@@ -94,9 +94,13 @@ If the server is started with `--vm-service-url URL`, it auto-connects at startu
 ### 🚀 Quick start a Flutter app
 
 ```
-1. flutter_run(platform: "macos", workingDirectory: "/path/to/project")
-   → Server starts flutter run --debug, captures URL, connects
-   → Ready for inspection in ~30-60s
+# Any of these work:
+launch(platform: "macos", workingDirectory: "/path/to/project")
+flutter_run(platform: "macos", workingDirectory: "/path/to/project")
+run(platform: "macos", workingDirectory: "/path/to/project")
+
+→ Server starts flutter run --debug, captures URL, connects
+→ Ready for inspection in ~30-60s
 
 2. widget_tree()
    → See everything on screen

@@ -3,7 +3,6 @@ import 'dart:convert';
 import '../connection.dart';
 import '../current_connection.dart';
 import '../mcp_transport.dart';
-import '../trace.dart';
 
 /// MCP tool impl: get_parent_chain
 ///
@@ -13,10 +12,7 @@ import '../trace.dart';
 Future<Map<String, Object?>> getParentChainImpl(
   FlutterConnection connection,
   String nodeId,
-  TraceLog trace,
 ) async {
-  final startTime = trace.start();
-
   try {
     final response = await connection.service.callServiceExtension(
       'ext.flutter.inspector.getParentChain',
@@ -60,13 +56,6 @@ Future<Map<String, Object?>> getParentChainImpl(
       }
     }
 
-    trace.complete(
-      action: 'get_parent_chain',
-      startTimeMs: startTime,
-      target: nodeId,
-      result: 'success',
-    );
-
     return {
       'status': 'success',
       'nodeId': nodeId,
@@ -74,13 +63,6 @@ Future<Map<String, Object?>> getParentChainImpl(
       'parentChain': chain,
     };
   } catch (e) {
-    trace.complete(
-      action: 'get_parent_chain',
-      startTimeMs: startTime,
-      target: nodeId,
-      result: 'error',
-      error: e.toString(),
-    );
     return {'status': 'error', 'error': e.toString()};
   }
 }
@@ -98,7 +80,7 @@ ToolDef createGetParentChainTool() {
     },
     handler: (args) async {
       final conn = await CurrentConnection.get();
-      return getParentChainImpl(conn, args['nodeId'] as String, TraceLog());
+      return getParentChainImpl(conn, args['nodeId'] as String);
     },
   );
 }
