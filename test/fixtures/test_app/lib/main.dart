@@ -17,10 +17,7 @@ class TestApp extends StatelessWidget {
     return MaterialApp(
       title: 'MCP Test Fixture',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorSchemeSeed: Colors.indigo,
-        useMaterial3: true,
-      ),
+      theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true),
       home: const HomeShell(),
     );
   }
@@ -42,28 +39,15 @@ class _HomeShellState extends State<HomeShell> {
     return Scaffold(
       body: IndexedStack(
         index: _tabIndex,
-        children: const [
-          WidgetGalleryTab(),
-          ScrollTestTab(),
-          FormTestTab(),
-        ],
+        children: const [WidgetGalleryTab(), ScrollTestTab(), FormTestTab()],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tabIndex,
         onDestinationSelected: (i) => setState(() => _tabIndex = i),
         destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.widgets),
-            label: 'Widgets',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.list),
-            label: 'Scroll',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.edit),
-            label: 'Form',
-          ),
+          NavigationDestination(icon: Icon(Icons.widgets), label: 'Widgets'),
+          NavigationDestination(icon: Icon(Icons.list), label: 'Scroll'),
+          NavigationDestination(icon: Icon(Icons.edit), label: 'Form'),
         ],
       ),
     );
@@ -245,9 +229,7 @@ class _WidgetGalleryTabState extends State<WidgetGalleryTab> {
                 child: ElevatedButton(
                   onPressed: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const HeroDetailPage(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const HeroDetailPage()),
                     );
                   },
                   child: Hero(
