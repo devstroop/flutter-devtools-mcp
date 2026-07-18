@@ -36,6 +36,7 @@ import 'package:flutter_devtools_mcp/src/tools/connect.dart';
 import 'package:flutter_devtools_mcp/src/tools/disconnect.dart';
 import 'package:flutter_devtools_mcp/src/tools/status.dart';
 import 'package:flutter_devtools_mcp/src/tools/list_apps.dart';
+import 'package:flutter_devtools_mcp/src/tools/list_devices.dart';
 import 'package:flutter_devtools_mcp/src/tools/flutter_run.dart';
 import 'package:flutter_devtools_mcp/src/registry.dart';
 
@@ -194,11 +195,17 @@ void main(List<String> args) async {
     name: 'flutter_devtools_mcp',
     version: '1.0.0',
     tools: [
+      createAttachTool(),
       createConnectTool(),
       createDisconnectTool(),
       createStatusTool(),
       createListAppsTool(),
+      createListDevicesTool(),
+      createLaunchTool(),
+      createRunTool(),
       createFlutterRunTool(),
+      createLaunchAppTool(),
+      createStartAppTool(),
       createSnapshotTool(),
       createInspectTool(),
       createGetParentChainTool(),
