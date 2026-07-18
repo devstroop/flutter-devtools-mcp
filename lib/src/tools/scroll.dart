@@ -1,10 +1,13 @@
+import 'package:logging/logging.dart';
+
 import '../connection.dart';
 import '../current_connection.dart';
 import '../mcp_transport.dart';
 import '../selectors.dart';
 import '../actions.dart' as actions;
 import '../retry.dart';
-import '../trace.dart';
+
+final _log = Logger('Scroll');
 
 /// MCP tool: scroll
 ///
@@ -13,11 +16,9 @@ Future<Map<String, Object?>> scrollImpl(
   FlutterConnection connection,
   String selectorStr,
   String direction, // 'up', 'down', 'left', 'right'
-  TraceLog trace, {
+  {
   double amount = 300.0,
 }) async {
-  final startTime = trace.start();
-
   final (dx, dy) = switch (direction) {
     'up' => (0.0, amount),
     'down' => (0.0, -amount),
@@ -36,24 +37,10 @@ Future<Map<String, Object?>> scrollImpl(
       await actions.scroll(connection, bounds, dx: dx, dy: dy);
     }, description: 'scroll($selectorStr, $direction)');
 
-    trace.complete(
-      action: 'scroll',
-      startTimeMs: startTime,
-      target: '$selectorStr ($direction)',
-      selector: selectorStr,
-      result: 'success',
-    );
-
+    _log.info('Scrolled $selectorStr $direction');
     return {'status': 'success', 'direction': direction, 'amount': amount};
   } catch (e) {
-    trace.complete(
-      action: 'scroll',
-      startTimeMs: startTime,
-      target: selectorStr,
-      selector: selectorStr,
-      result: 'error',
-      error: e.toString(),
-    );
+    _log.warning('Scroll $selectorStr failed: $e');
     return {'status': 'error', 'error': e.toString()};
   }
 }
@@ -89,7 +76,6 @@ ToolDef createScrollTool() {
         conn,
         args['selector'] as String,
         args['direction'] as String,
-        TraceLog(),
         amount: (args['amount'] as num?)?.toDouble() ?? 300.0,
       );
     },

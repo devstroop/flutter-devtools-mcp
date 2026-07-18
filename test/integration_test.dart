@@ -5,7 +5,6 @@ import 'dart:io';
 import 'package:test/test.dart';
 import 'package:flutter_devtools_mcp/src/connection.dart';
 import 'package:flutter_devtools_mcp/src/selectors.dart';
-import 'package:flutter_devtools_mcp/src/trace.dart';
 import 'package:flutter_devtools_mcp/src/tools/snapshot.dart';
 import 'package:flutter_devtools_mcp/src/tools/inspect.dart';
 import 'package:flutter_devtools_mcp/src/tools/tap.dart';
@@ -28,7 +27,6 @@ import 'package:flutter_devtools_mcp/src/tools/press_back.dart';
 ///   5. dart test --tags integration
 void main() {
   late FlutterConnection connection;
-  late TraceLog trace;
 
   final vmUrl = Platform.environment['FLUTTER_VM_SERVICE_URL'];
 
@@ -38,7 +36,6 @@ void main() {
     }
     connection = FlutterConnection(vmServiceUrl: vmUrl);
     await connection.connect();
-    trace = TraceLog();
   });
 
   tearDown(() async {
@@ -105,7 +102,7 @@ void main() {
   group('tap', () {
     test('taps button and changes state', () async {
       // Tap the increment button
-      final result = await tapImpl(connection, 'semantics:Increment', trace);
+      final result = await tapImpl(connection, 'semantics:Increment');
       expect(result['status'], 'success');
       // Verify the resolved node is returned
       final node = result['node'] as Map<String, Object?>?;
@@ -117,7 +114,7 @@ void main() {
 
   group('screenshot', () {
     test('returns valid PNG data', () async {
-      final result = await screenshotImpl(connection, trace);
+      final result = await screenshotImpl(connection);
       expect(result['status'], 'success');
       expect(result['format'], 'png');
       expect(result['encoding'], 'base64');
@@ -130,14 +127,13 @@ void main() {
 
   group('evaluate', () {
     test('evaluates simple expression', () async {
-      final result = await evaluateImpl(connection, '1 + 1', trace);
+      final result = await evaluateImpl(connection, '1 + 1');
       expect(result['status'], 'success');
       expect(result['value'], '2');
     });
 
     test('evaluates string expression', () async {
-      final result =
-          await evaluateImpl(connection, '"hello".toUpperCase()', trace);
+      final result = await evaluateImpl(connection, '"hello".toUpperCase()');
       expect(result['status'], 'success');
       expect(result['value'], 'HELLO');
     });
@@ -145,19 +141,8 @@ void main() {
 
   group('hot_reload', () {
     test('triggers reload successfully', () async {
-      final result = await hotReloadImpl(connection, trace);
+      final result = await hotReloadImpl(connection);
       expect(result['status'], 'success');
-    });
-  });
-
-  group('trace', () {
-    test('records actions', () async {
-      final localTrace = TraceLog();
-      await screenshotImpl(connection, localTrace);
-      expect(localTrace.entries, hasLength(1));
-      expect(localTrace.entries.first.action, 'screenshot');
-      expect(localTrace.entries.first.result, 'success');
-      expect(localTrace.entries.first.durationMs, greaterThanOrEqualTo(0));
     });
   });
 
@@ -171,7 +156,6 @@ void main() {
         connection,
         'key:name_field',
         'Test Input',
-        trace,
       );
       // Either success (field got focused) or error with clear message
       final status = result['status'] as String;
@@ -191,7 +175,6 @@ void main() {
         connection,
         'key:vertical_list',
         'down',
-        trace,
       );
       expect(result['status'], 'success');
       expect(result['direction'], 'down');
@@ -201,7 +184,7 @@ void main() {
 
   group('press_back', () {
     test('returns success even when no route to pop', () async {
-      final result = await pressBackImpl(connection, trace);
+      final result = await pressBackImpl(connection);
       expect(result['status'], 'success');
     });
   });

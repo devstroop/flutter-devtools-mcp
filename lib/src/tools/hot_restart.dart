@@ -1,7 +1,10 @@
+import 'package:logging/logging.dart';
+
 import '../connection.dart';
 import '../current_connection.dart';
 import '../mcp_transport.dart';
-import '../trace.dart';
+
+final _log = Logger('HotRestart');
 
 /// MCP tool: hot_restart
 ///
@@ -10,10 +13,7 @@ import '../trace.dart';
 /// while preserving the currently loaded code.
 Future<Map<String, Object?>> hotRestartImpl(
   FlutterConnection connection,
-  TraceLog trace,
 ) async {
-  final startTime = trace.start();
-
   try {
     await connection.service.callServiceExtension(
       'ext.flutter.reassemble',
@@ -21,24 +21,13 @@ Future<Map<String, Object?>> hotRestartImpl(
     );
     // Refresh cached isolate and root library — reassemble can change them
     await connection.refreshIsolate();
-
-    trace.complete(
-      action: 'hot_restart',
-      startTimeMs: startTime,
-      result: 'success',
-    );
-
+    _log.info('Hot restart completed');
     return {
       'status': 'success',
       'message': 'Hot restart completed. App state has been reset.',
     };
   } catch (e) {
-    trace.complete(
-      action: 'hot_restart',
-      startTimeMs: startTime,
-      result: 'error',
-      error: e.toString(),
-    );
+    _log.warning('Hot restart failed: $e');
     return {'status': 'error', 'error': e.toString()};
   }
 }
@@ -54,7 +43,7 @@ ToolDef createHotRestartTool() {
     },
     handler: (args) async {
       final conn = await CurrentConnection.get();
-      return hotRestartImpl(conn, TraceLog());
+      return hotRestartImpl(conn);
     },
   );
 }

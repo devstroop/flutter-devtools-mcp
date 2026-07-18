@@ -1,28 +1,23 @@
+import 'package:logging/logging.dart';
+
 import '../connection.dart';
 import '../current_connection.dart';
 import '../mcp_transport.dart';
-import '../trace.dart';
+
+final _log = Logger('GetMemory');
 
 /// MCP tool: get_memory
 ///
 /// Get memory usage of the Flutter app's main isolate.
-/// Returns heap used/capacity and external usage in bytes.
 Future<Map<String, Object?>> getMemoryImpl(
   FlutterConnection connection,
-  TraceLog trace,
 ) async {
-  final startTime = trace.start();
-
   try {
     final usage = await connection.service.getMemoryUsage(
       connection.isolateId,
     );
 
-    trace.complete(
-      action: 'get_memory',
-      startTimeMs: startTime,
-      result: 'success',
-    );
+    _log.info('Memory: ${_bytesToMB(usage.heapUsage)} heap');
 
     return {
       'status': 'success',
@@ -34,12 +29,7 @@ Future<Map<String, Object?>> getMemoryImpl(
       'externalUsageMB': _bytesToMB(usage.externalUsage),
     };
   } catch (e) {
-    trace.complete(
-      action: 'get_memory',
-      startTimeMs: startTime,
-      result: 'error',
-      error: e.toString(),
-    );
+    _log.warning('Get memory failed: $e');
     return {'status': 'error', 'error': e.toString()};
   }
 }
@@ -60,7 +50,7 @@ ToolDef createGetMemoryTool() {
     },
     handler: (args) async {
       final conn = await CurrentConnection.get();
-      return getMemoryImpl(conn, TraceLog());
+      return getMemoryImpl(conn);
     },
   );
 }

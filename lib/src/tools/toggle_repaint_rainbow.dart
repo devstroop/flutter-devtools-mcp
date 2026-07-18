@@ -1,20 +1,18 @@
+import 'package:logging/logging.dart';
+
 import '../connection.dart';
-import '../trace.dart';
 import '../current_connection.dart';
 import '../mcp_transport.dart';
 
+final _log = Logger('ToggleRainbow');
+
 /// MCP tool: toggle_repaint_rainbow
 ///
-/// Toggle repaint rainbow — applies a rotating color overlay to repainted
-/// regions. Useful for identifying widgets that repaint too frequently.
-/// Take a screenshot after enabling to see repaint activity.
+/// Toggle repaint rainbow — rotating color overlay on repainted regions.
 Future<Map<String, Object?>> toggleRepaintRainbowImpl(
   FlutterConnection connection,
   bool enable,
-  TraceLog trace,
 ) async {
-  final startTime = trace.start();
-
   try {
     final response = await connection.service.callServiceExtension(
       'ext.flutter.repaintRainbow',
@@ -23,13 +21,7 @@ Future<Map<String, Object?>> toggleRepaintRainbowImpl(
     );
 
     final current = response.json?['enabled'] as String?;
-
-    trace.complete(
-      action: 'toggle_repaint_rainbow',
-      startTimeMs: startTime,
-      target: enable.toString(),
-      result: 'success',
-    );
+    _log.info('Repaint rainbow: ${(current ?? enable.toString()) == 'true'}');
 
     return {
       'status': 'success',
@@ -39,12 +31,7 @@ Future<Map<String, Object?>> toggleRepaintRainbowImpl(
           : 'Repaint rainbow disabled.',
     };
   } catch (e) {
-    trace.complete(
-      action: 'toggle_repaint_rainbow',
-      startTimeMs: startTime,
-      result: 'error',
-      error: e.toString(),
-    );
+    _log.warning('Toggle repaint rainbow failed: $e');
     return {'status': 'error', 'error': e.toString()};
   }
 }
@@ -66,7 +53,7 @@ ToolDef createToggleRepaintRainbowTool() {
     },
     handler: (args) async {
       final conn = await CurrentConnection.get();
-      return toggleRepaintRainbowImpl(conn, args['enable'] as bool, TraceLog());
+      return toggleRepaintRainbowImpl(conn, args['enable'] as bool);
     },
   );
 }

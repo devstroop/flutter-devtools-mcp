@@ -1,7 +1,10 @@
+import 'package:logging/logging.dart';
+
 import '../connection.dart';
 import '../current_connection.dart';
 import '../mcp_transport.dart';
-import '../trace.dart';
+
+final _log = Logger('Evaluate');
 
 /// MCP tool impl: evaluate
 ///
@@ -10,33 +13,18 @@ import '../trace.dart';
 Future<Map<String, Object?>> evaluateImpl(
   FlutterConnection connection,
   String expression,
-  TraceLog trace,
 ) async {
-  final startTime = trace.start();
-
   try {
     final result = await connection.evaluate(expression);
-
-    trace.complete(
-      action: 'evaluate',
-      startTimeMs: startTime,
-      target: expression,
-      result: 'success',
-    );
-
+    _log.fine(
+        'Evaluated: ${expression.length > 64 ? '${expression.substring(0, 64)}...' : expression} → ${result.valueAsString}');
     return {
       'status': 'success',
       'value': result.valueAsString,
       'type': result.classRef?.name,
     };
   } catch (e) {
-    trace.complete(
-      action: 'evaluate',
-      startTimeMs: startTime,
-      target: expression,
-      result: 'error',
-      error: e.toString(),
-    );
+    _log.warning('Evaluate failed: $e');
     return {'status': 'error', 'error': e.toString()};
   }
 }
@@ -57,7 +45,7 @@ ToolDef createEvaluateTool() {
     },
     handler: (args) async {
       final conn = await CurrentConnection.get();
-      return evaluateImpl(conn, args['expression'] as String, TraceLog());
+      return evaluateImpl(conn, args['expression'] as String);
     },
   );
 }

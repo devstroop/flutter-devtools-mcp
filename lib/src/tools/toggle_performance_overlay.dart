@@ -1,20 +1,19 @@
+import 'package:logging/logging.dart';
+
 import '../connection.dart';
-import '../trace.dart';
 import '../current_connection.dart';
 import '../mcp_transport.dart';
+
+final _log = Logger('TogglePerfOverlay');
 
 /// MCP tool: toggle_performance_overlay
 ///
 /// Toggle the Flutter performance overlay — shows real-time frame timing
-/// graphs (UI thread and raster thread). Take a screenshot to capture the
-/// overlay for analysis.
+/// graphs (UI thread and raster thread).
 Future<Map<String, Object?>> togglePerformanceOverlayImpl(
   FlutterConnection connection,
   bool enable,
-  TraceLog trace,
 ) async {
-  final startTime = trace.start();
-
   try {
     final response = await connection.service.callServiceExtension(
       'ext.flutter.showPerformanceOverlay',
@@ -23,13 +22,8 @@ Future<Map<String, Object?>> togglePerformanceOverlayImpl(
     );
 
     final current = response.json?['enabled'] as String?;
-
-    trace.complete(
-      action: 'toggle_performance_overlay',
-      startTimeMs: startTime,
-      target: enable.toString(),
-      result: 'success',
-    );
+    _log.info(
+        'Performance overlay: ${(current ?? enable.toString()) == 'true'}');
 
     return {
       'status': 'success',
@@ -39,12 +33,7 @@ Future<Map<String, Object?>> togglePerformanceOverlayImpl(
           : 'Performance overlay disabled.',
     };
   } catch (e) {
-    trace.complete(
-      action: 'toggle_performance_overlay',
-      startTimeMs: startTime,
-      result: 'error',
-      error: e.toString(),
-    );
+    _log.warning('Toggle performance overlay failed: $e');
     return {'status': 'error', 'error': e.toString()};
   }
 }
@@ -66,8 +55,7 @@ ToolDef createTogglePerformanceOverlayTool() {
     },
     handler: (args) async {
       final conn = await CurrentConnection.get();
-      return togglePerformanceOverlayImpl(
-          conn, args['enable'] as bool, TraceLog());
+      return togglePerformanceOverlayImpl(conn, args['enable'] as bool);
     },
   );
 }

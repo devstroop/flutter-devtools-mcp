@@ -1,27 +1,21 @@
+import 'package:logging/logging.dart';
+
 import '../connection.dart';
 import '../current_connection.dart';
 import '../mcp_transport.dart';
-import '../trace.dart';
+
+final _log = Logger('Screenshot');
 
 /// MCP tool: screenshot
 ///
 /// Capture the current screen as base64-encoded PNG.
 Future<Map<String, Object?>> screenshotImpl(
   FlutterConnection connection,
-  TraceLog trace,
 ) async {
-  final startTime = trace.start();
-
   try {
     final response = await connection.screenshot();
     final bytes = response.json?['screenshot'] as String?;
-
-    trace.complete(
-      action: 'screenshot',
-      startTimeMs: startTime,
-      result: 'success',
-    );
-
+    _log.info('Screenshot captured (${bytes?.length ?? 0} bytes)');
     return {
       'status': 'success',
       'format': 'png',
@@ -29,12 +23,7 @@ Future<Map<String, Object?>> screenshotImpl(
       if (bytes != null) 'data': bytes,
     };
   } catch (e) {
-    trace.complete(
-      action: 'screenshot',
-      startTimeMs: startTime,
-      result: 'error',
-      error: e.toString(),
-    );
+    _log.warning('Screenshot failed: $e');
     return {'status': 'error', 'error': e.toString()};
   }
 }
@@ -49,7 +38,7 @@ ToolDef createScreenshotTool() {
     },
     handler: (args) async {
       final conn = await CurrentConnection.get();
-      final result = await screenshotImpl(conn, TraceLog());
+      final result = await screenshotImpl(conn);
       if (result['status'] == 'success') {
         result['_mcp_content_type'] = 'image';
       }

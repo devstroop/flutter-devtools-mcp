@@ -1,19 +1,18 @@
+import 'package:logging/logging.dart';
+
 import '../connection.dart';
 import '../current_connection.dart';
 import '../mcp_transport.dart';
-import '../trace.dart';
+
+final _log = Logger('GetLayerTree');
 
 /// MCP tool: get_layer_tree
 ///
 /// Dump the compositing layer tree as text. Shows how Flutter composes
-/// render objects into layers for GPU rendering. Useful for diagnosing
-/// compositing issues, saveLayer calls, and opacity/clip layer overhead.
+/// render objects into layers for GPU rendering.
 Future<Map<String, Object?>> getLayerTreeImpl(
   FlutterConnection connection,
-  TraceLog trace,
 ) async {
-  final startTime = trace.start();
-
   try {
     final response = await connection.service.callServiceExtension(
       'ext.flutter.debugDumpLayerTree',
@@ -21,24 +20,14 @@ Future<Map<String, Object?>> getLayerTreeImpl(
     );
 
     final dump = response.json?['data'] as String?;
-
-    trace.complete(
-      action: 'get_layer_tree',
-      startTimeMs: startTime,
-      result: 'success',
-    );
+    _log.info('Layer tree dumped (${dump?.length ?? 0} chars)');
 
     return {
       'status': 'success',
       'layerTree': dump ?? response.json?.toString() ?? 'No data returned',
     };
   } catch (e) {
-    trace.complete(
-      action: 'get_layer_tree',
-      startTimeMs: startTime,
-      result: 'error',
-      error: e.toString(),
-    );
+    _log.warning('Get layer tree failed: $e');
     return {'status': 'error', 'error': e.toString()};
   }
 }
@@ -53,7 +42,7 @@ ToolDef createGetLayerTreeTool() {
     },
     handler: (args) async {
       final conn = await CurrentConnection.get();
-      return getLayerTreeImpl(conn, TraceLog());
+      return getLayerTreeImpl(conn);
     },
   );
 }

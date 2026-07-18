@@ -1,7 +1,10 @@
+import 'package:logging/logging.dart';
+
 import '../connection.dart';
 import '../current_connection.dart';
 import '../mcp_transport.dart';
-import '../trace.dart';
+
+final _log = Logger('DumpSemantics');
 
 /// MCP tool: dump_semantics
 ///
@@ -9,10 +12,7 @@ import '../trace.dart';
 /// Useful for verifying accessibility labels, roles, and screen reader output.
 Future<Map<String, Object?>> dumpSemanticsImpl(
   FlutterConnection connection,
-  TraceLog trace,
 ) async {
-  final startTime = trace.start();
-
   try {
     final response = await connection.service.callServiceExtension(
       'ext.flutter.debugDumpSemanticsTreeInTraversalOrder',
@@ -20,24 +20,14 @@ Future<Map<String, Object?>> dumpSemanticsImpl(
     );
 
     final dump = response.json?['data'] as String?;
-
-    trace.complete(
-      action: 'dump_semantics',
-      startTimeMs: startTime,
-      result: 'success',
-    );
+    _log.info('Semantics tree dumped (${dump?.length ?? 0} chars)');
 
     return {
       'status': 'success',
       'semanticsTree': dump ?? response.json?.toString() ?? 'No data returned',
     };
   } catch (e) {
-    trace.complete(
-      action: 'dump_semantics',
-      startTimeMs: startTime,
-      result: 'error',
-      error: e.toString(),
-    );
+    _log.warning('Dump semantics failed: $e');
     return {'status': 'error', 'error': e.toString()};
   }
 }
@@ -52,7 +42,7 @@ ToolDef createDumpSemanticsTool() {
     },
     handler: (args) async {
       final conn = await CurrentConnection.get();
-      return dumpSemanticsImpl(conn, TraceLog());
+      return dumpSemanticsImpl(conn);
     },
   );
 }

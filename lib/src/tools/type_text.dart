@@ -1,10 +1,13 @@
+import 'package:logging/logging.dart';
+
 import '../connection.dart';
 import '../current_connection.dart';
 import '../mcp_transport.dart';
 import '../selectors.dart';
 import '../actions.dart' as actions;
 import '../retry.dart';
-import '../trace.dart';
+
+final _log = Logger('TypeText');
 
 /// MCP tool: type_text
 ///
@@ -13,10 +16,7 @@ Future<Map<String, Object?>> typeTextImpl(
   FlutterConnection connection,
   String selectorStr,
   String text,
-  TraceLog trace,
 ) async {
-  final startTime = trace.start();
-
   try {
     final selector = Selector.parse(selectorStr);
 
@@ -31,25 +31,10 @@ Future<Map<String, Object?>> typeTextImpl(
     await Future<void>.delayed(const Duration(milliseconds: 50));
 
     await actions.enterText(connection, text);
-
-    trace.complete(
-      action: 'type_text',
-      startTimeMs: startTime,
-      target: selectorStr,
-      selector: selectorStr,
-      result: 'success',
-    );
-
+    _log.info('Typed text into $selectorStr');
     return {'status': 'success', 'text': text};
   } catch (e) {
-    trace.complete(
-      action: 'type_text',
-      startTimeMs: startTime,
-      target: selectorStr,
-      selector: selectorStr,
-      result: 'error',
-      error: e.toString(),
-    );
+    _log.warning('Type text into $selectorStr failed: $e');
     return {'status': 'error', 'error': e.toString()};
   }
 }
@@ -77,7 +62,7 @@ ToolDef createTypeTextTool() {
     handler: (args) async {
       final conn = await CurrentConnection.get();
       return typeTextImpl(
-          conn, args['selector'] as String, args['text'] as String, TraceLog());
+          conn, args['selector'] as String, args['text'] as String);
     },
   );
 }
