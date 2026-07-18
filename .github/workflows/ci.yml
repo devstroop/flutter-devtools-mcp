@@ -67,10 +67,5 @@ jobs:
       - name: Run tests
         run: dart test --exclude-tags integration
 
-      - name: Verify build (non-Windows)
-        if: runner.os != 'Windows'
-        run: dart compile exe bin/server.dart -o /dev/null
-
-      - name: Verify build (Windows)
-        if: runner.os == 'Windows'
-        run: dart compile exe bin/server.dart -o ${{ runner.temp }}/test_build.exe
+      - name: Verify build
+        run: dart compile exe bin/server.dart -o ${{ runner.temp }}/test-build 
