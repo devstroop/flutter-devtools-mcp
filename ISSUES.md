@@ -2,6 +2,17 @@
 
 ---
 
+## ✅ Resolved
+
+| # | Issue | Fix | Date |
+|---|---|---|---|
+| TD3 | **TraceLog abstraction removed** — `trace.dart` + structured tracing was dead weight (produced data no tool consumed). Replaced with direct `_log.fine()` calls in error paths. 22 tool files cleaned up. | [`trace.dart` deleted, all imports + calls removed] | 2026-07-18 |
+| R1 | **get_errors simplified** — Removed event stream subscription, 300ms heuristic, `streamListen('Extension')`, and `FlutterError.resetErrorCount()` evaluate call. Now just calls `ext.flutter.inspector.getErrorInfo` directly. | [`lib/src/tools/get_errors.dart` rewritten] | 2026-07-18 |
+| R2 | **TraceLog test group removed** from integration tests. | [`test/integration_test.dart` cleaned up] | 2026-07-18 |
+| R3 | **Agent aliases added** — New agents try `launch` or `run_app` instead of `flutter_run`, causing stalls. Now all three names are registered as aliases sharing the same handler. | [`flutter_run.dart` + `server.dart`] | 2026-07-18 |
+
+---
+
 ## 🟡 Technical Debt
 
 ### TD1. `connect` tool should be named `attach`
