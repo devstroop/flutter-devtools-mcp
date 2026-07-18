@@ -65,6 +65,15 @@ Future<Map<String, Object?>> getErrorsImpl(
       if (errors.isEmpty) 'message': 'No Flutter framework errors detected.',
     };
   } catch (e) {
+    final errStr = e.toString();
+    // Release-mode Flutter apps don't support this extension.
+    if (errStr.contains('-32601') || errStr.contains('Unknown method')) {
+      return {
+        'status': 'error',
+        'error': 'Errors not available in this build mode. '
+            'Run the Flutter app in debug mode to capture framework errors.',
+      };
+    }
     _log.fine('get_errors failed: $e');
     return {'status': 'error', 'error': e.toString()};
   }
