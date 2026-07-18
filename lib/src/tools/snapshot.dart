@@ -9,7 +9,11 @@ Future<Map<String, Object?>> snapshotImpl(FlutterConnection connection) async {
     'getRootWidgetSummaryTree',
     {'objectGroup': 'mcp-snapshot'},
   );
-  return transformTree(rawTree);
+  final tree = transformTree(rawTree);
+  return {
+    'status': 'success',
+    'tree': tree,
+  };
 }
 
 /// MCP tool: widget_tree

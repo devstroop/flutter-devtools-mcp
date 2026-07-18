@@ -20,6 +20,14 @@ Future<Map<String, Object?>> tapImpl(
   try {
     final selector = Selector.parse(selectorStr);
 
+    // Text and index selectors can hit deep widgets — use a longer
+    // timeout to accommodate tree traversal + bounds resolution.
+    final isTextOrIndex = selector.tier == SelectorTier.text ||
+        selector.tier == SelectorTier.byIndex;
+    final config = isTextOrIndex
+        ? const RetryConfig(timeout: Duration(seconds: 8))
+        : const RetryConfig();
+
     final result = await withRetry(() async {
       final node = await resolveSelector(connection, selector);
       final bounds = await actions.getBounds(connection, node);
@@ -29,7 +37,7 @@ Future<Map<String, Object?>> tapImpl(
       }
       await actions.tap(connection, bounds);
       return (node: node, bounds: bounds);
-    }, description: 'tap($selectorStr)');
+    }, description: 'tap($selectorStr)', config: config);
 
     _log.info('Tapped $selectorStr → ${result.node.type}');
     return {'status': 'success', 'node': result.node.toJson()};

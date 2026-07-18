@@ -45,18 +45,19 @@ void main() {
   group('snapshot', () {
     test('returns valid tree with node IDs', () async {
       final result = await snapshotImpl(connection);
-      expect(result['id'], isNotNull);
-      expect(result['type'], isA<String>());
-      // Tree should have children (the app has content)
-      expect(result.containsKey('children'), true);
+      final tree = result['tree'] as Map<String, Object?>?;
+      expect(tree, isNotNull);
+      expect(tree!['id'], isNotNull);
+      expect(tree['type'], isA<String>());
+      expect(tree.containsKey('children'), true);
     });
 
     test('tree contains expected widget types', () async {
       final result = await snapshotImpl(connection);
-      // Walk the tree and collect types
+      final tree = result['tree'] as Map<String, Object?>?;
+      expect(tree, isNotNull);
       final types = <String>{};
-      _collectTypes(result, types);
-      // The test app should have these widget types
+      _collectTypes(tree!, types);
       expect(types, contains(contains('Scaffold')));
       expect(types, contains(contains('Text')));
     });
@@ -64,9 +65,10 @@ void main() {
 
   group('inspect', () {
     test('returns detailed node properties', () async {
-      // First get a node ID from snapshot
-      final tree = await snapshotImpl(connection);
-      final nodeId = tree['id'] as String;
+      final result = await snapshotImpl(connection);
+      final tree = result['tree'] as Map<String, Object?>?;
+      expect(tree, isNotNull);
+      final nodeId = tree!['id'] as String;
 
       final detail = await inspectImpl(connection, nodeId);
       expect(detail['id'], isNotNull);

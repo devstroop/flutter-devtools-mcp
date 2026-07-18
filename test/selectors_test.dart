@@ -54,4 +54,39 @@ void main() {
       expect(Selector.parse('index:Button:2').toString(), 'index:Button:2');
     });
   });
+
+  group('SelectorError', () {
+    test('includes index hints in error message', () {
+      final error = SelectorError(
+        'Ambiguous: 2 nodes match "text:Connect".',
+        matchCount: 2,
+        matches: [
+          ResolvedNode(
+            id: 'node-1',
+            type: 'Text',
+            text: 'Connect',
+            matchedVia: SelectorTier.text,
+          ),
+          ResolvedNode(
+            id: 'node-2',
+            type: 'Text',
+            text: 'Connect',
+            matchedVia: SelectorTier.text,
+          ),
+        ],
+      );
+      final msg = error.toString();
+      expect(msg, contains('index:Text:0'));
+      expect(msg, contains('index:Text:1'));
+      expect(msg, contains('[0] Text'));
+      expect(msg, contains('[1] Text'));
+    });
+
+    test('empty matches still shows count', () {
+      final error = SelectorError('No match', matchCount: 0);
+      final msg = error.toString();
+      expect(msg, contains('No match'));
+      expect(msg, contains('0'));
+    });
+  });
 }
