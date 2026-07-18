@@ -193,7 +193,7 @@ void main(List<String> args) async {
   /// doesn't process requests until .run() is called.
   final server = McpServer(
     name: 'flutter_devtools_mcp',
-    version: '1.0.5',
+    version: '1.0.6',
     tools: [
       createAttachTool(),
       createConnectTool(),
