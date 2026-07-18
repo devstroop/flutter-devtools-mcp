@@ -1,45 +1,23 @@
-import 'dart:async';
+import 'package:logging/logging.dart';
 
 import '../connection.dart';
 import '../current_connection.dart';
 import '../mcp_transport.dart';
-import '../trace.dart';
+
+final _log = Logger('GetErrors');
 
 /// MCP tool: get_errors
 ///
 /// Retrieve Flutter framework errors (structured errors) from the running app.
-/// Subscribes to the Extension event stream, requests structured errors,
-/// then collects any error events within a brief window.
+/// First ensures structured error collection is enabled (idempotent), then
+/// calls `ext.flutter.inspector.getErrorInfo` which returns all errors
+/// collected since the last reload.
 Future<Map<String, Object?>> getErrorsImpl(
   FlutterConnection connection,
-  TraceLog trace,
 ) async {
-  final startTime = trace.start();
-  final errors = <Map<String, Object?>>[];
-  StreamSubscription<dynamic>? subscription;
-
   try {
-    // Listen for Extension events which carry structured Flutter errors
-    subscription = connection.service.onExtensionEvent.listen((event) {
-      if (event.extensionKind == 'Flutter.Error') {
-        final data = event.extensionData?.data;
-        if (data != null) {
-          errors.add({
-            'description': data['description'] ?? data['renderedErrorText'],
-            'errorsSinceReload': data['errorsSinceReload'],
-          });
-        }
-      }
-    });
-
-    // Ensure the Extension stream is being listened to
-    try {
-      await connection.service.streamListen('Extension');
-    } catch (_) {
-      // Already subscribed — that's fine
-    }
-
-    // Enable structured errors so pending errors get flushed as events
+    // Ensure structured errors are enabled so getErrorInfo returns data.
+    // Idempotent — safe to call multiple times.
     try {
       await connection.service.callServiceExtension(
         'ext.flutter.inspector.structuredErrors',
@@ -47,62 +25,62 @@ Future<Map<String, Object?>> getErrorsImpl(
         args: {'enabled': 'true'},
       );
     } catch (_) {
-      // May already be enabled
+      // May already be enabled or not supported on older Flutter.
     }
 
-    // Give a short window for error events to arrive
-    await Future.delayed(const Duration(milliseconds: 300));
-
-    // Also try to get the error count via evaluate
-    int? errorCount;
-    try {
-      final result = await connection.evaluate(
-        'FlutterError.resetErrorCount()',
-      );
-      final count = int.tryParse(result.valueAsString ?? '');
-      if (count != null) errorCount = count;
-    } catch (_) {
-      // Not critical
-    }
-
-    trace.complete(
-      action: 'get_errors',
-      startTimeMs: startTime,
-      result: 'success',
+    final response = await connection.service.callServiceExtension(
+      'ext.flutter.inspector.getErrorInfo',
+      isolateId: connection.isolateId,
+      args: {},
     );
+
+    final data = response.json;
+    final errors = (data?['errors'] as List<dynamic>?) ?? [];
+
+    // Restore top-level errorsSinceReload as the max of per-item values
+    // for backward compatibility with consumers expecting the old format.
+    int maxErrorsSinceReload = 0;
+    final mapped = errors.map((e) {
+      final m = e as Map<String, dynamic>;
+      final perItem = m['errorsSinceReload'] as int? ?? 0;
+      if (perItem > maxErrorsSinceReload) maxErrorsSinceReload = perItem;
+      return {
+        'description': m['description'] ?? m['renderedErrorText'],
+        'type': m['type'],
+        'errorsSinceReload': perItem,
+      };
+    }).toList();
+
+    // Reset the error counter so subsequent calls don't return duplicates.
+    // Best-effort — a failure here should not break the tool.
+    try {
+      await connection.evaluate('FlutterError.resetErrorCount()');
+    } catch (_) {}
 
     return {
       'status': 'success',
       'errorCount': errors.length,
-      if (errorCount != null) 'errorsSinceReload': errorCount,
-      'errors': errors,
+      'errorsSinceReload': maxErrorsSinceReload,
+      'errors': mapped,
       if (errors.isEmpty) 'message': 'No Flutter framework errors detected.',
     };
   } catch (e) {
-    trace.complete(
-      action: 'get_errors',
-      startTimeMs: startTime,
-      result: 'error',
-      error: e.toString(),
-    );
+    _log.fine('get_errors failed: $e');
     return {'status': 'error', 'error': e.toString()};
-  } finally {
-    await subscription?.cancel();
   }
 }
 
 ToolDef createGetErrorsTool() {
   return ToolDef(
     name: 'get_errors',
-    description:
-        'Retrieve Flutter framework errors (structured errors) from the running app.',
+    description: 'Retrieve Flutter framework errors from the running app.',
     inputSchema: {
       'type': 'object',
       'properties': {},
     },
     handler: (args) async {
       final conn = await CurrentConnection.get();
-      return getErrorsImpl(conn, TraceLog());
+      return getErrorsImpl(conn);
     },
   );
 }
