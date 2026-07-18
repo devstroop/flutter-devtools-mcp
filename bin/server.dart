@@ -109,9 +109,9 @@ void main(List<String> args) async {
     final candidates = <String>[];
 
     // 1. --vm-service-url flag takes priority
-    if (vmServiceUrlArg != null && vmServiceUrlArg!.isNotEmpty) {
-      seen.add(vmServiceUrlArg!);
-      candidates.add(vmServiceUrlArg!);
+    if (vmServiceUrlArg != null && vmServiceUrlArg.isNotEmpty) {
+      seen.add(vmServiceUrlArg);
+      candidates.add(vmServiceUrlArg);
     }
 
     // 2. Previously active registry entries (reversed = most recent first)
