@@ -9,24 +9,52 @@ permissions:
   contents: write
 
 jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: Cache pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.yaml') }}
+          restore-keys: pub-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: dart pub get
+
+      - name: Analyze
+        run: dart analyze lib/ bin/ --fatal-infos
+
+      - name: Run tests
+        run: dart test --exclude-tags integration
+
   build-and-release:
-    name: Build & Release ${{ matrix.os }}
+    name: Build & Release ${{ matrix.asset_name }}
+    needs: test
     strategy:
       matrix:
         include:
           - os: linux
             runs-on: ubuntu-latest
-            exe: flutter_devtools_mcp
+            exe: flutter_devtools_mcp_server
             asset_name: flutter_devtools_mcp-linux-x64
             archive_ext: tar.gz
           - os: macos
             runs-on: macos-latest
-            exe: flutter_devtools_mcp
+            exe: flutter_devtools_mcp_server
             asset_name: flutter_devtools_mcp-macos-arm64
             archive_ext: tar.gz
           - os: windows
             runs-on: windows-latest
-            exe: flutter_devtools_mcp.exe
+            exe: flutter_devtools_mcp_server.exe
             asset_name: flutter_devtools_mcp-windows-x64
             archive_ext: zip
             archive_cmd_powershell: true
@@ -41,6 +69,13 @@ jobs:
         with:
           sdk: stable
 
+      - name: Cache pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.yaml') }}
+          restore-keys: pub-${{ runner.os }}-
+
       - name: Install dependencies
         run: dart pub get
 
@@ -51,21 +86,40 @@ jobs:
         if: matrix.archive_cmd_powershell != true
         shell: bash
         run: |
-          cd bin
-          tar -czf ${{ matrix.asset_name }}.${{ matrix.archive_ext }} ${{ matrix.exe }}
+          mkdir -p release
+          cp bin/${{ matrix.exe }} release/
+          cp README.md LICENSE release/
+          cd release
+          tar -czf ../${{ matrix.asset_name }}.${{ matrix.archive_ext }} *
+          cd ..
+          shasum -a 256 ${{ matrix.asset_name }}.${{ matrix.archive_ext }} > ${{ matrix.asset_name }}.sha256
 
       - name: Package archive (zip)
         if: matrix.archive_cmd_powershell == true
         shell: pwsh
         run: |
-          Push-Location bin
-          Compress-Archive -Path ${{ matrix.exe }} -DestinationPath ${{ matrix.asset_name }}.${{ matrix.archive_ext }}
+          New-Item -ItemType Directory -Force release
+          Copy-Item bin/${{ matrix.exe }} release/
+          Copy-Item README.md release/
+          Copy-Item LICENSE release/
+          Push-Location release
+          Compress-Archive -Path * -DestinationPath ..\${{ matrix.asset_name }}.${{ matrix.archive_ext }}
           Pop-Location
+          $hash = (Get-FileHash ${{ matrix.asset_name }}.${{ matrix.archive_ext }} -Algorithm SHA256).Hash.ToLower()
+          "$hash  ${{ matrix.asset_name }}.${{ matrix.archive_ext }}" | Out-File ${{ matrix.asset_name }}.sha256
 
-      - name: Upload release asset
+      - name: Upload binary archive
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: bin/${{ matrix.asset_name }}.${{ matrix.archive_ext }}
+          file: ${{ matrix.asset_name }}.${{ matrix.archive_ext }}
           asset_name: ${{ matrix.asset_name }}.${{ matrix.archive_ext }}
+          tag: ${{ github.ref }}
+
+      - name: Upload checksum
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ matrix.asset_name }}.sha256
+          asset_name: ${{ matrix.asset_name }}.sha256
           tag: ${{ github.ref }}
