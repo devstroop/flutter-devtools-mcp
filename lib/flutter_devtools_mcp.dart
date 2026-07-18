@@ -12,5 +12,4 @@ export 'src/selectors.dart';
 export 'src/transform.dart';
 export 'src/actions.dart';
 export 'src/retry.dart';
-export 'src/trace.dart';
 export 'src/registry.dart';
