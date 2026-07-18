@@ -64,7 +64,29 @@ class CurrentConnection {
   /// Call [Registry.register] *after* this on success so a failed set()
   /// doesn't leave a stale active entry in the registry.
   static Future<void> set(FlutterConnection connection) async {
-    await disconnect();
+    // Close the old connection without killing the managed flutter run
+    // process — the new connection may be the one started by flutter_run.
+    final oldConn = _conn;
+    if (oldConn != null) {
+      final oldUrl = _vmServiceUrl;
+      _conn = null;
+      _vmServiceUrl = null;
+      if (oldUrl != null) {
+        try {
+          Registry.instance.markDisconnected(oldUrl);
+        } catch (e) {
+          stderr.writeln(
+            '[current_connection] Failed to mark $oldUrl disconnected: $e',
+          );
+        }
+      }
+      try {
+        await oldConn.disconnect();
+      } catch (_) {
+        // Old connection failed to close — new connection is still set
+        // below, so this failure is non-fatal.
+      }
+    }
     _vmServiceUrl = connection.vmServiceUrl;
     _conn = connection;
   }
