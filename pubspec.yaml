@@ -1,6 +1,6 @@
 name: flutter_devtools_mcp
 description: MCP server for Flutter UI automation via DevTools VM Service extensions.
-version: 1.0.0
+version: 1.0.1
 publish_to: none
 
 environment:
