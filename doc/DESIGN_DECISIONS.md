@@ -120,6 +120,8 @@ Decisions locked during architecture phase. Each has rationale and is final for 
 
 **Rationale:** VM Service is powerful — evaluate arbitrary Dart, inspect state, hot reload. Exposing this to remote connections would be a security hole. For dev tooling, localhost is the only valid use case. This matches Flutter DevTools' own security model.
 
+**When to revisit:** If remote debugging via SSH tunnel becomes a requested workflow.
+
 ---
 
 ## DD-11: `getRootWidgetSummaryTree` + `getDetailsSubtree` two-step
@@ -141,3 +143,36 @@ Decisions locked during architecture phase. Each has rationale and is final for 
 - Back: `Navigator.pop()`
 
 This approach requires zero app-side code and works with any Flutter debug app. `callDriver()` was removed as unused.
+
+---
+
+## DD-13: flutter_run as a managed child process
+
+**Decision:** The `flutter_run` tool spawns `flutter run --debug` as a child process and manages its lifecycle.
+
+**Rationale:** Eliminates the manual URL copy-paste workflow. The regex `A Dart VM Service.*is available at: (http://\S+)` is stable across Flutter versions and platforms. The process is killed on disconnect to free ports and prevent orphans. A PID guard prevents race conditions when processes are started and stopped rapidly.
+
+**Risks:**
+- `flutter run` requires Flutter SDK in PATH (resolved by mcp.json env or fallback paths)
+- Compilation can take 60-120 seconds (handled via configurable timeout)
+- stderr pipe must be continuously drained to prevent buffer blocking
+
+---
+
+## DD-14: Persistent registry for VM Service URLs
+
+**Decision:** Save connected URLs to `~/.flutter_devtools_mcp/registry.json`.
+
+**Rationale:** Enables auto-reconnect across server restarts. The registry is purely informational — entries are not required for operation. Registration is best-effort (failures logged but never propagated). The `list_apps` tool exposes the registry to agents so they can reconnect without scanning logs.
+
+**Storage format:** JSON array of `RegistryEntry` objects with `vmServiceUrl`, `projectPath`, `firstSeen`, `lastSeen`, and `isActive` flag.
+
+---
+
+## DD-15: Token masking in logs
+
+**Decision:** VM Service auth tokens are masked in all log output.
+
+**Rationale:** The VM Service URL contains a secret token (`http://127.0.0.1:PORT/TOKEN=/`). Logging the full URL to stderr (which may be captured by MCP clients) would leak the token. The first path segment after the host:port is replaced with `***` in all log output. The raw URL is never written to stderr.
+
+**Implementation:** Uses `Uri` parsing to rebuild the URL with a masked token — more robust than regex. Covers both raw (`http://host/token/`) and normalized (`ws://host/token/ws`) formats.
