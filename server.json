@@ -1,11 +1,13 @@
 {
   "name": "flutter_devtools_mcp",
-  "version": "1.0.0",
-  "description": "MCP server for Flutter UI automation via VM Service extensions. Connect to a running Flutter debug app by passing its VM Service URL.",
+  "version": "1.0.4",
+  "description": "MCP server for Flutter UI automation via VM Service extensions. Connect to a running Flutter debug app, inspect widgets, tap, type, scroll, screenshot, hot reload, and more.",
   "tools": [
     {"name": "connect", "description": "Connect to a running Flutter debug app. Requires vmServiceUrl — the http:// URL from flutter run output (e.g. http://127.0.0.1:54321/abc123=/)."},
-    {"name": "disconnect", "description": "Disconnect from the currently connected Flutter app. Closes the VM Service WebSocket."},
+    {"name": "disconnect", "description": "Disconnect from the currently connected Flutter app. Closes the VM Service WebSocket and kills any managed flutter run process."},
     {"name": "status", "description": "Check whether connected to a Flutter app. Returns {\"connected\": true/false}."},
+    {"name": "list_apps", "description": "List all Flutter apps in the persistent registry (~/.flutter_devtools_mcp/registry.json) with URLs, project paths, and connection status."},
+    {"name": "flutter_run", "description": "Start a Flutter app in debug mode and auto-connect. No need to paste a VM Service URL — the server captures it automatically from flutter run --debug output."},
     {"name": "widget_tree", "description": "Get the current widget tree as structured JSON — every widget, type, label, key, bounds, children."},
     {"name": "inspect", "description": "Get detailed properties of a specific widget node by its ID (from widget_tree)."},
     {"name": "get_parent_chain", "description": "Get ancestor chain from a widget node up to root."},
