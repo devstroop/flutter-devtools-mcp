@@ -1,30 +1,19 @@
 ﻿# Flutter Devtools MCP
 
-An [MCP server](https://modelcontextprotocol.io/) that lets AI agents see and interact with your running Flutter app — tap buttons, type text, scroll, take screenshots, and more.
+An [MCP server](https://modelcontextprotocol.io/) that lets AI agents see and interact with
+your running Flutter app — tap buttons, type text, scroll, take screenshots, hot reload,
+and more — all through the VM Service protocol.
 
-## Install
+## Quick Start
 
 **Prerequisites:** [Flutter SDK](https://docs.flutter.dev/get-started/install) (includes Dart)
 
 ```bash
 git clone https://github.com/user/flutter_devtools_mcp.git
 cd flutter_devtools_mcp
-zsh install.sh
-```
-
-The script compiles a native binary and prints the path. Copy the config it outputs into your editor.
-
-<details>
-<summary>Manual install</summary>
-
-```bash
 dart pub get
 dart compile exe bin/server.dart -o bin/flutter_devtools_mcp_server
 ```
-
-</details>
-
-## Setup
 
 Add to your editor's MCP config:
 
@@ -33,7 +22,8 @@ Add to your editor's MCP config:
 {
   "servers": {
     "flutter": {
-      "command": "/absolute/path/to/flutter_devtools_mcp/bin/flutter_devtools_mcp_server"
+      "command": "/absolute/path/to/flutter_devtools_mcp/bin/flutter_devtools_mcp_server",
+      "args": []
     }
   }
 }
@@ -50,44 +40,152 @@ Add to your editor's MCP config:
 }
 ```
 
-## Usage
+Restart your editor / MCP client and the tools are ready.
 
-The workflow is simple:
+---
 
-1. **Run your app**: `flutter run --debug` (or `flutter run -d macos --debug`, etc.)
-2. **Copy the VM Service URL** from the output (looks like `http://127.0.0.1:54321/abc123=/`)
-3. **Call `connect`**: `connect(vmServiceUrl: "http://127.0.0.1:54321/abc123=/")`
-4. **Interact**: call `widget_tree`, `tap`, `type_text`, `screenshot`, etc.
-5. **Done?** Call `disconnect()` to close the WebSocket.
+## Two Ways to Connect
+
+### 1. 🚀 `flutter_run` — Auto-start and connect (recommended)
+
+If you have the Flutter project on disk, the server can start the app for you:
+
+```
+flutter_run(platform: "macos", workingDirectory: "/path/to/your/project")
+```
+
+This runs `flutter run --debug`, captures the VM Service URL automatically,
+connects to it, and keeps the process alive. When you `disconnect()`, the
+`flutter run` process is killed cleanly.
+
+**No copy-pasting URLs.** The server handles the entire lifecycle.
+
+### 2. 🔌 `connect` — Manual (app already running)
+
+1. In your terminal, run your Flutter app in debug mode:
+   ```bash
+   flutter run --debug
+   ```
+2. Find the VM Service URL in the output:
+   ```
+   A Dart VM Service on macOS is available at: http://127.0.0.1:54321/abc123=/
+   ```
+3. Pass it to the `connect` tool:
+   ```
+   connect(vmServiceUrl: "http://127.0.0.1:54321/abc123=/")
+   ```
+4. The server normalises it (`http://` → `ws://`, appends `/ws`) and connects.
+
+---
+
+## Persistent Registry
+
+The server remembers every Flutter app you've connected to in
+`~/.flutter_devtools_mcp/registry.json`. Entries survive restarts.
+
+- **`list_apps()`** — Show all known apps with URLs, projects, and connection status
+- **Auto-connect on startup** — If you start the server with `--vm-service-url URL`,
+  it connects immediately. Otherwise it tries previously active registry entries
+  (most recent first, 5-second timeout per candidate)
+- **`status()`** — Check current connection state
+
+---
+
+## Tool Reference
+
+### Connection
+
+| Tool | Arguments | Description |
+|---|---|---|
+| `connect` | `vmServiceUrl` (required) | Connect via VM Service URL from `flutter run` output |
+| `disconnect` | — | Close connection, kill managed `flutter run` if any |
+| `status` | — | `{"connected": true/false}` |
+| `list_apps` | — | List all apps in the persistent registry with connection status |
+| `flutter_run` | `platform` (required), `workingDirectory` | Start and auto-connect in one step |
+
+### Inspection
+
+| Tool | Arguments | Description |
+|---|---|---|
+| `widget_tree` | — | Full widget tree as JSON (types, labels, keys, bounds, children) |
+| `inspect` | `nodeId` (required) | Deep properties of one widget node |
+| `get_parent_chain` | `nodeId` (required) | Ancestor chain from node to root |
+| `get_render_tree` | — | Render object tree as text (layout, constraints, sizes) |
+| `get_layer_tree` | — | Compositing layer tree — diagnose saveLayer/opacity overhead |
+| `dump_semantics` | — | Accessibility/semantics tree in traversal order |
+
+### Interaction
+
+| Tool | Arguments | Description |
+|---|---|---|
+| `tap` | `selector` (required) | Tap widget by selector |
+| `type_text` | `selector` (required), `text` (required) | Focus field and enter text |
+| `scroll` | `selector` (required), `direction`, `amount` | Scroll a scrollable widget |
+| `press_back` | — | Pop the top navigator route |
+| `screenshot` | — | Capture screen as base64 PNG |
+
+### Development
+
+| Tool | Arguments | Description |
+|---|---|---|
+| `hot_reload` | — | Apply code changes, preserve state |
+| `hot_restart` | — | Full restart, reset app state |
+| `evaluate` | `expression` (required) | Run arbitrary Dart expression in the app |
+| `get_errors` | — | Get Flutter framework errors (build errors, flex overflows, etc.) |
+| `get_logs` | — | Capture recent stdout/stderr/log() output |
+| `get_memory` | — | Heap and external memory usage of the main isolate |
+
+### Theme & Platform
+
+| Tool | Arguments | Description |
+|---|---|---|
+| `toggle_dark_mode` | `enable` (bool) | Switch between light and dark mode |
+| `toggle_platform` | `platform` (required) | Override target platform (ios, android, etc.) |
+| `toggle_debug_paint` | `enable` (bool) | Widget boundary overlay |
+| `toggle_repaint_rainbow` | `enable` (bool) | Rotating color overlay on repaint |
+| `toggle_slow_animations` | `timeDilation` (double) | Slow down (5.0) or restore (1.0) animations |
+| `toggle_performance_overlay` | `enable` (bool) | Real-time frame timing graphs |
+| `track_rebuilds` | `enable` (bool) | Widget rebuild counts in inspector overlay |
+| `track_repaints` | `enable` (bool) | Repaint region highlighting |
+
+---
+
+## Selectors
+
+Target widgets with any of these formats (tried in order):
+
+| Format | Example | Best for |
+|---|---|---|
+| `semantics:Label` | `semantics:Submit` | Stable across rebuilds, accessibility-aligned |
+| `key:value` | `key:submit_btn` | Widgets with explicit `Key` |
+| `text:Content` | `text:Submit` | Visible text content |
+| `index:Type:N` | `index:ElevatedButton:0` | Last resort — fragile, use with caution |
+
+Ambiguous matches return an explicit error — the server never silently picks one.
 
 ---
 
 ## Recommended Workflows
 
-These are battle-tested sequences optimized for AI agents. Follow them step by step.
-
-### 🔍 Inspecting the UI
+### 🖼 Inspecting the UI
 
 ```
-1. connect(vmServiceUrl: "...")
-   → Wait for {"status":"connected"}
-
-2. widget_tree()
-   → Returns every widget on screen: types, labels, keys, bounds, children
+1. widget_tree()
+   → Returns every widget on screen: type, labels, keys, bounds, children
    → Pick the nodeId of the widget you want to examine
 
-3. inspect(nodeId: "inspector-0x...")
+2. inspect(nodeId: "inspector-0x...")
    → Deep properties, styles, constraints for that one widget
 
-4. get_parent_chain(nodeId: "inspector-0x...")
-   → See where the widget sits in the hierarchy (child → root)
+3. get_parent_chain(nodeId: "inspector-0x...")
+   → See where the widget sits in the hierarchy
 ```
 
 ### 👆 Interacting with a widget
 
 ```
 1. widget_tree()
-   → Find the target widget's selector (semantics:Label is best)
+   → Find the target widget's selector (prefer semantics: or key:)
 
 2. tap(selector: "semantics:Submit")
    → Resolves widget → checks visibility → taps center
@@ -105,7 +203,7 @@ These are battle-tested sequences optimized for AI agents. Follow them step by s
 
 ```
 1. screenshot()
-   → Returns a real image of the screen (base64 PNG, rendered as image by MCP)
+   → Returns a real image of the screen
 
 2. get_render_tree()
    → Text dump of every RenderBox: size, constraints, paint info
@@ -118,16 +216,15 @@ These are battle-tested sequences optimized for AI agents. Follow them step by s
    → screenshot() to capture the overlay
 
 5. toggle_performance_overlay(enable: true)
-   → Real-time frame timing graphs (UI + raster thread)
-   → screenshot() to capture graphs for analysis
+   → Real-time frame timing graphs
+   → screenshot() to capture graphs
 ```
 
-### ⚡ Hot reload / restart cycle
+### ⚡ Hot reload / restart
 
 ```
 1. hot_reload()
    → Applies code changes, preserves state
-   → Wait for {"status":"success"}
 
 2. hot_restart()
    → Full reassemble — resets app state
@@ -138,17 +235,13 @@ These are battle-tested sequences optimized for AI agents. Follow them step by s
 
 ```
 1. toggle_dark_mode(enable: true)
-   → Switches to dark mode
    → screenshot() to verify
 
-2. toggle_dark_mode(enable: false)
-   → Back to light mode
-
-3. toggle_platform(platform: "ios")
+2. toggle_platform(platform: "ios")
    → Renders iOS-style widgets (Cupertino)
    → screenshot() to verify
 
-4. toggle_platform(platform: "android")
+3. toggle_platform(platform: "android")
    → Back to Material Design
 ```
 
@@ -156,7 +249,7 @@ These are battle-tested sequences optimized for AI agents. Follow them step by s
 
 ```
 1. get_errors()
-   → Returns structured Flutter errors (build errors, render flex overflows, etc.)
+   → Returns structured Flutter errors (build errors, flex overflows, etc.)
 
 2. get_logs()
    → Captures recent print(), debugPrint(), and log() output
@@ -185,82 +278,59 @@ These are battle-tested sequences optimized for AI agents. Follow them step by s
 
 6. toggle_slow_animations(timeDilation: 1.0)
    → Restore normal speed
-
-7. track_rebuilds(enable: false)
-   → Disable tracking
 ```
 
-## Tools
+---
 
-| Tool | What it does |
+## How It Works
+
+```
+Flutter App (debug mode)
+  └── VM Service WebSocket (ws://127.0.0.1:PORT/TOKEN=/ws)
+        └── flutter-devtools-mcp (Dart native binary)
+              └── stdio JSON-RPC 2.0
+                    └── AI Agent / MCP Client
+```
+
+| Capability | Mechanism |
 |---|---|
-| `connect` | Connect to a running Flutter debug app (requires vmServiceUrl from flutter run output) |
-| `disconnect` | Disconnect from the current app |
-| `status` | Check whether connected to a Flutter app |
-| `widget_tree` | Widget tree as structured JSON (every widget, type, label, key, bounds) |
-| `inspect` | Detailed properties of a widget node by ID |
-| `get_parent_chain` | Ancestor chain — understand layout context |
-| `get_render_tree` | Render object tree as text |
-| `get_layer_tree` | Compositing layer tree as text |
-| `dump_semantics` | Accessibility/semantics tree |
-| `tap` | Tap a widget by selector (semantics:, key:, text:, index:) |
-| `type_text` | Focus a text field then enter text |
-| `scroll` | Scroll a scrollable widget |
-| `screenshot` | Capture screen as PNG image |
-| `hot_reload` | Trigger hot reload |
-| `hot_restart` | Full hot restart (resets state) |
-| `evaluate` | Run a Dart expression |
-| `press_back` | Pop the top route |
-| `get_errors` | Get Flutter framework errors |
-| `get_logs` | Capture stdout/stderr/log() output |
-| `get_memory` | Get memory usage (heap, external) |
-| `toggle_dark_mode` | Toggle dark/light mode |
-| `toggle_platform` | Override target platform |
-| `toggle_debug_paint` | Toggle widget boundary overlay |
-| `toggle_repaint_rainbow` | Toggle repaint rainbow |
-| `toggle_slow_animations` | Slow down/restore animations |
-| `toggle_performance_overlay` | Toggle frame timing graphs |
-| `track_rebuilds` | Toggle widget rebuild tracking |
-| `track_repaints` | Toggle repaint tracking |
+| **Read widget tree** | `ext.flutter.inspector.*` VM Service extensions |
+| **Interact (tap, scroll)** | `evaluate()` → `WidgetsBinding.handlePointerEvent()` |
+| **Type text** | `evaluate()` → `TextEditingController.text = ...` |
+| **Screenshots** | `_flutter.screenshot` extension → PNG |
+| **Hot reload** | `reloadSources()` VM Service API |
+| **Connect** | `vmServiceConnectUri()` WebSocket handshake |
 
-### Selectors
+### Security
 
-Target widgets with these formats (tried in order):
+- Only localhost (`127.0.0.1`, `localhost`, `::1`) VM Service URLs are accepted
+- Auth tokens in URLs are masked in all log output
+- The managed `flutter run` process is killed on disconnect
 
-| Format | Example | When to use |
-|---|---|---|
-| `semantics:Label` | `semantics:Submit` | Best — uses accessibility labels |
-| `key:value` | `key:submit_btn` | Good — uses widget keys |
-| `text:Content` | `text:Submit` | OK — matches visible text |
-| `index:Type:N` | `index:ElevatedButton:0` | Last resort — fragile |
-
-Ambiguous matches return an error — the server never silently picks one.
-
-## How it works
-
-```
-Flutter App (debug)  →  VM Service WebSocket  →  This MCP Server  →  AI Agent
-```
-
-- **Reads** widget trees via `ext.flutter.inspector.*` extensions
-- **Acts** via `evaluate()` gesture injection (tap, type, scroll)
-- **Captures** screenshots via `_flutter.screenshot`
-- **Connects on demand** — pass the VM Service URL to `connect`, then all tools use that single connection
+---
 
 ## Development
 
 ```bash
-# Run tests
+# Run unit tests
 dart test
 
-# Run with verbose logging
-dart run bin/server.dart --verbose
+# Run integration tests (requires running test fixture app)
+export FLUTTER_VM_SERVICE_URL=ws://127.0.0.1:<port>/ws
+dart test --tags integration
 
-# Compile after changes
+# Static analysis
+dart analyze lib/ bin/ --fatal-infos
+
+# Format code
+dart format .
+
+# Build native binary
 dart compile exe bin/server.dart -o bin/flutter_devtools_mcp_server
 ```
 
-See [doc/ARCHITECTURE.md](doc/ARCHITECTURE.md) for internals.
+See [doc/ARCHITECTURE.md](doc/ARCHITECTURE.md) for internals,
+[doc/DESIGN_DECISIONS.md](doc/DESIGN_DECISIONS.md) for v1 design rationale.
 
 ## License
 
