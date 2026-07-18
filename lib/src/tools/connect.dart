@@ -59,8 +59,10 @@ ToolDef createConnectTool() {
         await CurrentConnection.set(conn);
         // Registry persistence is best-effort — a failure here should not
         // cause the connection to be dropped.
+        // Store the canonicalized URL (after normalization) so registry
+        // entries are always consistent.
         try {
-          Registry.instance.register(url);
+          Registry.instance.register(conn.vmServiceUrl);
         } catch (e) {
           stderr.writeln('[flutter_devtools_mcp] Failed to register URL: $e');
         }

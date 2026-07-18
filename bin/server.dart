@@ -90,16 +90,6 @@ void main(List<String> args) async {
 
   final vmServiceUrlArg = parseVmServiceUrl(args);
 
-  /// Mask the auth token in a VM Service URL for safe logging.
-  /// The token is the last path segment (e.g. abc123=/ → ***).
-  /// Works with or without a trailing slash.
-  String maskVmUrl(String url) {
-    return url.replaceFirstMapped(
-      RegExp(r'^(.*/)[^/]+(/)?$'),
-      (m) => '${m[1]}***${m[2] ?? ''}',
-    );
-  }
-
   // Auto-connect: serialize attempts so we never race CurrentConnection.set().
   // Try --vm-service-url first, then registry entries (most recent first).
   // First success wins — subsequent candidates are skipped.
@@ -149,10 +139,19 @@ void main(List<String> args) async {
         // Set connection BEFORE registering — if CurrentConnection.set()
         // throws, the registry stays clean (no stale active entry).
         await CurrentConnection.set(conn);
-        Registry.instance.register(url);
+        // Store the canonicalized URL from the connection, not the raw
+        // candidate input, so registry entries are always normalized.
+        final canonicalUrl = conn.vmServiceUrl;
+        // Registry persistence is best-effort — a failure here should not
+        // cause the connection to be dropped.
+        try {
+          Registry.instance.register(canonicalUrl);
+        } catch (e) {
+          stderr.writeln('[flutter_devtools_mcp] Failed to register URL: $e');
+        }
         conn = null; // Ownership transferred — don't dispose below.
         stderr.writeln(
-            '[flutter_devtools_mcp] Auto-connected: ${maskVmUrl(url)}');
+            '[flutter_devtools_mcp] Auto-connected: ${FlutterConnection.maskUrlToken(canonicalUrl)}');
         return; // First success wins.
       } catch (e) {
         if (conn != null) {
@@ -164,7 +163,7 @@ void main(List<String> args) async {
           Registry.instance.markDisconnected(url);
         }
         stderr.writeln(
-            '[flutter_devtools_mcp] Auto-connect failed: ${maskVmUrl(url)} — $e');
+            '[flutter_devtools_mcp] Auto-connect failed: ${FlutterConnection.maskUrlToken(url)} — $e');
       }
     }
 

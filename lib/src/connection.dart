@@ -81,7 +81,8 @@ class FlutterConnection {
       throw StateError('Connection cancelled');
     }
     _cancelCompleter = Completer<void>();
-    _log.info('Connecting to $vmServiceUrl');
+    // Mask the auth token in log output.
+    _log.info('Connecting to ${maskUrlToken(vmServiceUrl)}');
 
     // Race: cancel signal vs WebSocket handshake.
     final connectFuture = vmServiceConnectUri(vmServiceUrl);
@@ -326,6 +327,20 @@ class FlutterConnection {
     }
 
     return uri.toString();
+  }
+
+  /// Mask the auth token in a VM Service URL for safe logging.
+  /// The token is the first path segment after the host:port.
+  /// Uses Uri parsing for robust handling of all URL formats — unlike a
+  /// regex, this always produces a masked result unless the URL is
+  /// completely unparseable (in which case it's returned as-is).
+  static String maskUrlToken(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return url;
+    final segments = uri.pathSegments;
+    if (segments.isEmpty) return url;
+    final masked = <String>['***', ...segments.skip(1)];
+    return uri.replace(pathSegments: masked).toString();
   }
 
   static bool _isLocalhost(String url) {
