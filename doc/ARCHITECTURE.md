@@ -8,15 +8,15 @@ Thin MCP adapter over Flutter's existing VM Service extensions. No reimplementat
 
 ```
 ┌─────────────────────────────────────┐
-│          MCP Protocol Layer          │  ← Tool registration, JSON-RPC
+│          MCP Protocol Layer         │  ← Tool registration, JSON-RPC
 ├─────────────────────────────────────┤
-│         Transform + Selectors        │  ← DiagnosticsNode → LLM JSON
+│         Transform + Selectors       │  ← DiagnosticsNode → LLM JSON
 │                                     │     4-tier selector resolution
 ├─────────────────────────────────────┤
-│           VM Service Client          │  ← WebSocket connection
+│           VM Service Client         │  ← WebSocket connection
 ├─────────────────────────────────────┤
-│      Flutter VM Service Extensions   │  ← ext.flutter.inspector.*
-│      + evaluate() for actions        │     _flutter.screenshot
+│      Flutter VM Service Extensions  │  ← ext.flutter.inspector.*
+│      + evaluate() for actions       │     _flutter.screenshot
 └─────────────────────────────────────┘
 ```
 
@@ -34,6 +34,37 @@ These extensions are registered by the Flutter framework (not DevTools). Any Web
 | `getProperties` | Widget properties by node ID | State reading |
 | `getSelectedWidget` | Currently selected widget | Debug integration |
 | `setSelectionById` | Select a widget programmatically | DevTools bridge |
+
+### Connection Management
+
+The server maintains a **single active connection** via `CurrentConnection` singleton.
+A **persistent registry** (`~/.flutter_devtools_mcp/registry.json`) saves known VM Service URLs.
+
+| Tool | Mechanism |
+|---|---|
+| `connect` | `vmServiceConnectUri()` WebSocket handshake → isolate discovery → root library resolution |
+| `disconnect` | `_service.dispose()` + `ManagedFlutterRun.kill()` |
+| `flutter_run` | `Process.start('flutter run --debug')` → stdout/stderr capture (regex) → `connect()` |
+| `list_apps` | Reads registry file, returns all entries with connection status |
+| `status` | Checks `CurrentConnection.isConnected` |
+
+#### ManagedFlutterRun
+
+The `flutter_run` tool spawns a child `flutter run --debug` process:
+
+1. Resolves the Flutter binary (PATH → `which` → platform fallback paths)
+2. `Process.start()` runs `flutter run -d <platform> --debug`
+3. Both stdout and stderr are forwarded to the server's stderr
+4. Regex `A Dart VM Service.*is available at: (http://\S+)` captures the URL
+5. Once captured, `FlutterConnection.connect()` is called
+6. The process stays alive; `kill()` sends `SIGTERM` → 3s grace → `SIGKILL`
+7. PID guard prevents stale exit handlers from affecting a new process
+
+#### Auto-connect on Startup
+
+`--vm-service-url URL` flag auto-connects at startup. Without the flag, the server
+tries previously active registry entries (most recent first, 5s timeout per candidate).
+Candidates are deduplicated. Registry registration is best-effort.
 
 ### Act Layer — `evaluate()` gesture injection
 
@@ -116,12 +147,20 @@ Source data:
 
 ```
 1. MCP server starts
-2. Connect to VM Service WebSocket
-3. Discover Flutter isolate (main)
-4. Register as client
-5. Ready to serve tool calls
+2. Load persistent registry from disk
+3. Auto-connect (if `--vm-service-url` flag or active registry entries exist)
+4. Listen for MCP tool calls via stdin JSON-RPC
+5. On `connect` / `flutter_run`:
+   a. Connect to VM Service WebSocket
+   b. Discover Flutter isolate (main)
+   c. Register in CurrentConnection singleton
+   d. Persist URL to registry
 6. On each tool call: fresh query → resolve → act → respond
-7. On shutdown: close WebSocket
+7. On `disconnect`:
+   a. Mark URL as disconnected in registry
+   b. Close WebSocket (`_service.dispose()`)
+   c. Kill managed flutter run process (if any)
+8. On process exit (`SIGINT`/`SIGTERM`): mark all registry entries inactive, exit
 ```
 
 ## Constraints
