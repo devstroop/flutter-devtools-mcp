@@ -16,6 +16,11 @@ class FlutterConnection {
   IsolateRef? _mainIsolate;
   String? _rootLibraryId;
 
+  /// Completer that resolves when [disconnect] is called while [connect] is
+  /// in-flight. The in-progress [connect] checks this between each step and
+  /// throws [CancelledException] if cancellation was requested.
+  Completer<void>? _cancelCompleter;
+
   FlutterConnection({required String vmServiceUrl})
       : vmServiceUrl = _normalizeVmUrl(vmServiceUrl) {
     if (!_isLocalhost(this.vmServiceUrl)) {
@@ -44,11 +49,59 @@ class FlutterConnection {
     return id;
   }
 
+  /// Cancel a connection in progress. If [connect] is running, it will
+  /// abort at the next cancellation point. This is a no-op if the
+  /// connection is already established or already cancelled.
+  void cancel() {
+    if (_cancelCompleter == null) {
+      // cancel() called before connect() started — eagerly create a
+      // completed completer so connect() sees the cancellation.
+      _cancelCompleter = Completer<void>()..complete();
+      return;
+    }
+    if (!_cancelCompleter!.isCompleted) {
+      _cancelCompleter!.complete();
+    }
+  }
+
+  /// Throw [StateError] if cancellation was requested.
+  void _checkCancelled() {
+    if (_cancelCompleter != null && _cancelCompleter!.isCompleted) {
+      throw StateError('Connection cancelled');
+    }
+  }
+
   /// Connect to the VM Service and discover the main Flutter isolate.
+  /// Can be aborted by calling [cancel] from another thread.
+  /// When cancelled, the underlying WebSocket is closed immediately.
   Future<void> connect() async {
+    // If cancellation was already requested before connect() started
+    // (e.g. timer fired before we reached this method), bail out immediately.
+    if (_cancelCompleter != null && _cancelCompleter!.isCompleted) {
+      throw StateError('Connection cancelled');
+    }
+    _cancelCompleter = Completer<void>();
     _log.info('Connecting to $vmServiceUrl');
-    _service = await vmServiceConnectUri(vmServiceUrl);
+
+    // Race: cancel signal vs WebSocket handshake.
+    final connectFuture = vmServiceConnectUri(vmServiceUrl);
+    final winner = await Future.any([
+      connectFuture.then((s) => 0), // connect finished
+      _cancelCompleter!.future.then((_) => 1), // cancelled
+    ]);
+    if (winner == 1) {
+      // Don't await connectFuture — it may never complete (e.g. network
+      // partition). Schedule disposal as fire-and-forget instead.
+      unawaited(
+        connectFuture.then((svc) => svc.dispose()).catchError((_) {}),
+      );
+      throw StateError('Connection cancelled');
+    }
+    _service = await connectFuture;
+    _checkCancelled();
+
     final vm = await _service!.getVM();
+    _checkCancelled();
 
     // Find the main Flutter isolate
     final isolates = vm.isolates;
@@ -70,10 +123,12 @@ class FlutterConnection {
       (iso) => iso.name == 'main',
       orElse: () => isolates.first,
     );
+    _checkCancelled();
     _log.info('Connected. Isolate: ${_mainIsolate?.id}');
 
     // Discover the root library for evaluate() calls
     final isolate = await _service!.getIsolate(isolateId);
+    _checkCancelled();
     final rootLib = isolate.rootLib;
     if (rootLib != null) {
       _rootLibraryId = rootLib.id;
