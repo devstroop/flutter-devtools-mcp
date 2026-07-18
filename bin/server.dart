@@ -75,7 +75,7 @@ void main(List<String> args) async {
   // fall through to stdio MCP mode so tools work immediately.
   // Supports both --vm-service-url=VALUE (equals) and
   // --vm-service-url VALUE (space-separated) forms.
-  String? _parseVmServiceUrl(List<String> args) {
+  String? parseVmServiceUrl(List<String> args) {
     const prefix = '--vm-service-url';
     for (var i = 0; i < args.length; i++) {
       if (args[i] == prefix && i + 1 < args.length) {
@@ -88,12 +88,12 @@ void main(List<String> args) async {
     return null;
   }
 
-  final vmServiceUrlArg = _parseVmServiceUrl(args);
+  final vmServiceUrlArg = parseVmServiceUrl(args);
 
   /// Mask the auth token in a VM Service URL for safe logging.
   /// The token is the last path segment (e.g. abc123=/ → ***).
   /// Works with or without a trailing slash.
-  String _maskVmUrl(String url) {
+  String maskVmUrl(String url) {
     return url.replaceFirstMapped(
       RegExp(r'^(.*/)[^/]+(/)?$'),
       (m) => '${m[1]}***${m[2] ?? ''}',
@@ -152,7 +152,7 @@ void main(List<String> args) async {
         Registry.instance.register(url);
         conn = null; // Ownership transferred — don't dispose below.
         stderr.writeln(
-            '[flutter_devtools_mcp] Auto-connected: ${_maskVmUrl(url)}');
+            '[flutter_devtools_mcp] Auto-connected: ${maskVmUrl(url)}');
         return; // First success wins.
       } catch (e) {
         if (conn != null) {
@@ -164,7 +164,7 @@ void main(List<String> args) async {
           Registry.instance.markDisconnected(url);
         }
         stderr.writeln(
-            '[flutter_devtools_mcp] Auto-connect failed: ${_maskVmUrl(url)} — $e');
+            '[flutter_devtools_mcp] Auto-connect failed: ${maskVmUrl(url)} — $e');
       }
     }
 
