@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import '../connection.dart';
 import '../current_connection.dart';
 import '../mcp_transport.dart';
+import '../registry.dart';
 
 /// MCP tool impl: connect
 ///
@@ -51,7 +54,16 @@ ToolDef createConnectTool() {
       try {
         final conn = FlutterConnection(vmServiceUrl: url);
         await conn.connect();
+        // Set connection BEFORE registering so a failed set() doesn't
+        // leave a stale active entry in the registry.
         await CurrentConnection.set(conn);
+        // Registry persistence is best-effort — a failure here should not
+        // cause the connection to be dropped.
+        try {
+          Registry.instance.register(url);
+        } catch (e) {
+          stderr.writeln('[flutter_devtools_mcp] Failed to register URL: $e');
+        }
         return {
           'content': [
             {

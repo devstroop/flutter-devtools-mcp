@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'connection.dart';
+import 'registry.dart';
 
 /// Holds the single active [FlutterConnection] for this MCP server.
 ///
@@ -57,19 +58,35 @@ class CurrentConnection {
   }
 
   /// Set (or replace) the active connection, closing any previous one.
+  /// Call [Registry.register] *after* this on success so a failed set()
+  /// doesn't leave a stale active entry in the registry.
   static Future<void> set(FlutterConnection connection) async {
-    // Disconnect any existing connection first to avoid leaking WebSockets
     await disconnect();
     _vmServiceUrl = connection.vmServiceUrl;
     _conn = connection;
   }
 
   /// Disconnect and clear the active connection.
+  /// Marks the URL as inactive in the registry (kept for history).
   static Future<void> disconnect() async {
     final c = _conn;
+    final url = _vmServiceUrl;
+
+    // Clear state first — subsequent operations see no connection.
+    _conn = null;
+    _vmServiceUrl = null;
+
+    // Update registry before the actual disconnect so a failed disconnect
+    // doesn't leave the URL falsely marked as active.
+    if (url != null) {
+      try {
+        Registry.instance.markDisconnected(url);
+      } catch (_) {
+        // Registry persistence is non-critical — don't break disconnect.
+      }
+    }
+
     if (c != null) {
-      _conn = null;
-      _vmServiceUrl = null;
       await c.disconnect();
     }
   }
