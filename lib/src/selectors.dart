@@ -7,9 +7,9 @@ final _log = Logger('Selectors');
 /// Selector tier, in order of preference.
 enum SelectorTier {
   semantics, // semantics:label
-  key,       // key:value_key
-  text,      // text:content
-  byIndex,   // index:Type:N
+  key, // key:value_key
+  text, // text:content
+  byIndex, // index:Type:N
 }
 
 /// A parsed selector.
@@ -47,7 +47,8 @@ class Selector {
         // index:Type:N
         final parts = rest.split(':');
         if (parts.length != 2) {
-          throw FormatException('Index selector must be index:Type:N, got: $raw');
+          throw FormatException(
+              'Index selector must be index:Type:N, got: $raw');
         }
         return Selector(
           tier: SelectorTier.byIndex,
@@ -69,11 +70,11 @@ class Selector {
 
 /// Result of resolving a selector against the widget tree.
 class ResolvedNode {
-  final String id;       // Inspector valueId
-  final String type;     // Widget type name
-  final String? label;   // Semantics label
-  final String? key;     // Key value
-  final String? text;    // Text content
+  final String id; // Inspector valueId
+  final String type; // Widget type name
+  final String? label; // Semantics label
+  final String? key; // Key value
+  final String? text; // Text content
   final SelectorTier matchedVia;
 
   ResolvedNode({
@@ -86,13 +87,13 @@ class ResolvedNode {
   });
 
   Map<String, Object?> toJson() => {
-    'id': id,
-    'type': type,
-    if (label != null) 'label': label,
-    if (key != null) 'key': key,
-    if (text != null) 'text': text,
-    'matchedVia': matchedVia.name,
-  };
+        'id': id,
+        'type': type,
+        if (label != null) 'label': label,
+        if (key != null) 'key': key,
+        if (text != null) 'text': text,
+        'matchedVia': matchedVia.name,
+      };
 }
 
 /// Selector resolution error.
@@ -152,7 +153,8 @@ Future<ResolvedNode> resolveSelector(
 
     case SelectorTier.semantics:
       // Find Semantics widgets and fetch their label property
-      final candidates = allNodes.where((n) => n.widgetType == 'Semantics').toList();
+      final candidates =
+          allNodes.where((n) => n.widgetType == 'Semantics').toList();
       for (final c in candidates) {
         final label = await _fetchSemanticsLabel(connection, c.valueId);
         if (label != null && label == selector.value) {
@@ -171,9 +173,11 @@ Future<ResolvedNode> resolveSelector(
 
     case SelectorTier.text:
       // Find Text/RichText widgets and fetch their data property
-      final candidates = allNodes.where(
-        (n) => n.widgetType == 'Text' || n.widgetType == 'RichText',
-      ).toList();
+      final candidates = allNodes
+          .where(
+            (n) => n.widgetType == 'Text' || n.widgetType == 'RichText',
+          )
+          .toList();
       for (final c in candidates) {
         final text = await _fetchTextData(connection, c.valueId);
         if (text != null && text == selector.value) {
@@ -343,7 +347,10 @@ Future<String?> _fetchTextData(
 /// Strip wrapping double quotes from StringProperty description values.
 /// Flutter's DiagnosticsNode.toJSON() wraps string descriptions in quotes.
 Object? _unquote(Object? value) {
-  if (value is String && value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
+  if (value is String &&
+      value.length >= 2 &&
+      value.startsWith('"') &&
+      value.endsWith('"')) {
     return value.substring(1, value.length - 1);
   }
   return value;

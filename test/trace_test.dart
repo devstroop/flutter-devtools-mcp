@@ -73,10 +73,14 @@ void main() {
     test('toJson serializes all entries', () {
       final log = TraceLog();
       log.complete(
-        action: 'tap', startTimeMs: 1000, result: 'success',
+        action: 'tap',
+        startTimeMs: 1000,
+        result: 'success',
       );
       log.complete(
-        action: 'screenshot', startTimeMs: 2000, result: 'success',
+        action: 'screenshot',
+        startTimeMs: 2000,
+        result: 'success',
       );
       final json = log.toJson();
       expect(json, hasLength(2));
@@ -93,9 +97,14 @@ void main() {
 
     test('entries list is unmodifiable', () {
       final log = TraceLog();
-      expect(() => log.entries.add(TraceEntry(
-        action: 'x', startTimeMs: 0, endTimeMs: 0, result: 'x',
-      )), throwsA(isA<UnsupportedError>()));
+      expect(
+          () => log.entries.add(TraceEntry(
+                action: 'x',
+                startTimeMs: 0,
+                endTimeMs: 0,
+                result: 'x',
+              )),
+          throwsA(isA<UnsupportedError>()));
     });
   });
 }

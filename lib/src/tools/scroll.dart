@@ -23,7 +23,8 @@ Future<Map<String, Object?>> scrollImpl(
     'down' => (0.0, -amount),
     'left' => (amount, 0.0),
     'right' => (-amount, 0.0),
-    _ => throw ArgumentError('Invalid direction: $direction. Use up/down/left/right.'),
+    _ => throw ArgumentError(
+        'Invalid direction: $direction. Use up/down/left/right.'),
   };
 
   try {
@@ -67,7 +68,8 @@ ToolDef createScrollTool() {
       'properties': {
         'selector': {
           'type': 'string',
-          'description': 'CSS-style selector identifying the scrollable widget.',
+          'description':
+              'CSS-style selector identifying the scrollable widget.',
         },
         'direction': {
           'type': 'string',

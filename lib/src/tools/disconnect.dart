@@ -7,8 +7,7 @@ import '../mcp_transport.dart';
 ToolDef createDisconnectTool() {
   return ToolDef(
     name: 'disconnect',
-    description:
-        'Disconnect from the currently connected Flutter app. '
+    description: 'Disconnect from the currently connected Flutter app. '
         'Closes the VM Service WebSocket connection.',
     inputSchema: {
       'type': 'object',

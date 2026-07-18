@@ -10,7 +10,8 @@ import '../mcp_transport.dart';
 ToolDef createConnectTool() {
   return ToolDef(
     name: 'connect',
-    description: 'Connect to a running Flutter debug app via its VM Service URL. '
+    description:
+        'Connect to a running Flutter debug app via its VM Service URL. '
         'When you run flutter run and see '
         '"A Dart VM Service is available at: http://127.0.0.1:PORT/TOKEN=/" '
         'in the terminal, copy that EXACT http:// URL (with the token) '

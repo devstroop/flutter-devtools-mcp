@@ -48,7 +48,10 @@ ToolDef createEvaluateTool() {
     inputSchema: {
       'type': 'object',
       'properties': {
-        'expression': {'type': 'string', 'description': 'Dart expression to evaluate'},
+        'expression': {
+          'type': 'string',
+          'description': 'Dart expression to evaluate'
+        },
       },
       'required': ['expression'],
     },

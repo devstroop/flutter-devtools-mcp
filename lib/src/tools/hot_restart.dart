@@ -44,7 +44,8 @@ Future<Map<String, Object?>> hotRestartImpl(
 ToolDef createHotRestartTool() {
   return ToolDef(
     name: 'hot_restart',
-    description: 'Trigger a full hot restart (reassemble) on the connected Flutter app.',
+    description:
+        'Trigger a full hot restart (reassemble) on the connected Flutter app.',
     inputSchema: {
       'type': 'object',
       'properties': {},

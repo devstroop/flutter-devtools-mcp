@@ -52,7 +52,8 @@ String _bytesToMB(int? bytes) {
 ToolDef createGetMemoryTool() {
   return ToolDef(
     name: 'get_memory',
-    description: 'Get memory usage of the Flutter app — heap used/capacity, external.',
+    description:
+        'Get memory usage of the Flutter app — heap used/capacity, external.',
     inputSchema: {
       'type': 'object',
       'properties': {},

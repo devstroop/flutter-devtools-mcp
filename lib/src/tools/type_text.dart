@@ -64,7 +64,8 @@ ToolDef createTypeTextTool() {
       'properties': {
         'selector': {
           'type': 'string',
-          'description': 'CSS-style selector identifying the text field (e.g. "semantics:textField", "text=Email").',
+          'description':
+              'CSS-style selector identifying the text field (e.g. "semantics:textField", "text=Email").',
         },
         'text': {
           'type': 'string',
@@ -75,7 +76,8 @@ ToolDef createTypeTextTool() {
     },
     handler: (args) async {
       final conn = await CurrentConnection.get();
-      return typeTextImpl(conn, args['selector'] as String, args['text'] as String, TraceLog());
+      return typeTextImpl(
+          conn, args['selector'] as String, args['text'] as String, TraceLog());
     },
   );
 }

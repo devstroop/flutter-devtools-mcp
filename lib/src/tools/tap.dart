@@ -69,7 +69,8 @@ ToolDef createTapTool() {
       'properties': {
         'selector': {
           'type': 'string',
-          'description': 'CSS-style selector identifying the widget to tap (e.g. "semantics:Increment", "text=Submit").',
+          'description':
+              'CSS-style selector identifying the widget to tap (e.g. "semantics:Increment", "text=Submit").',
         },
       },
       'required': ['selector'],

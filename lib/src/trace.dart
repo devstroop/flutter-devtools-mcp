@@ -31,18 +31,18 @@ class TraceEntry {
   int get durationMs => endTimeMs - startTimeMs;
 
   Map<String, Object?> toJson() => {
-    'action': action,
-    if (target != null) 'target': target,
-    if (selector != null) 'selector': selector,
-    if (resolvedNode != null) 'resolvedNode': resolvedNode,
-    if (bounds != null) 'bounds': bounds,
-    'retryCount': retryCount,
-    'startTime': startTimeMs,
-    'endTime': endTimeMs,
-    'durationMs': durationMs,
-    'result': result,
-    if (error != null) 'error': error,
-  };
+        'action': action,
+        if (target != null) 'target': target,
+        if (selector != null) 'selector': selector,
+        if (resolvedNode != null) 'resolvedNode': resolvedNode,
+        if (bounds != null) 'bounds': bounds,
+        'retryCount': retryCount,
+        'startTime': startTimeMs,
+        'endTime': endTimeMs,
+        'durationMs': durationMs,
+        'result': result,
+        if (error != null) 'error': error,
+      };
 }
 
 /// Maintains an ordered list of trace entries for the current session.
@@ -86,8 +86,8 @@ class TraceLog {
   }
 
   List<Map<String, Object?>> toJson() => [
-    for (final entry in _entries) entry.toJson(),
-  ];
+        for (final entry in _entries) entry.toJson(),
+      ];
 
   void clear() => _entries.clear();
 }

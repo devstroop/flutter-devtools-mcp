@@ -14,7 +14,8 @@ Future<Map<String, Object?>> statusImpl() async {
 ToolDef createStatusTool() {
   return ToolDef(
     name: 'status',
-    description: 'Check whether the tool is currently connected to a Flutter debug app. '
+    description:
+        'Check whether the tool is currently connected to a Flutter debug app. '
         'Returns {"connected": true/false}.',
     inputSchema: {
       'type': 'object',

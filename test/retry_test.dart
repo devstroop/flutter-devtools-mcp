@@ -35,7 +35,9 @@ void main() {
     test('throws TimeoutException when timeout expires', () async {
       await expectLater(
         withRetry(
-          () async { throw StateError('always fails'); },
+          () async {
+            throw StateError('always fails');
+          },
           config: const RetryConfig(
             timeout: Duration(milliseconds: 100),
             pollInterval: Duration(milliseconds: 20),
@@ -50,7 +52,9 @@ void main() {
       Object? caught;
       try {
         await withRetry(
-          () async { throw StateError('boom'); },
+          () async {
+            throw StateError('boom');
+          },
           config: const RetryConfig(
             timeout: Duration(milliseconds: 50),
             pollInterval: Duration(milliseconds: 10),
