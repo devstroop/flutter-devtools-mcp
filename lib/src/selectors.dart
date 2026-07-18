@@ -105,10 +105,23 @@ class SelectorError implements Exception {
   SelectorError(this.message, {this.matchCount = 0, this.matches = const []});
 
   @override
-  String toString() => 'SelectorError: $message (matches: $matchCount)';
+  String toString() {
+    final buf = StringBuffer('SelectorError: $message (matches: $matchCount)');
+    if (matches.isNotEmpty) {
+      buf.write('. Matching nodes:');
+      for (var i = 0; i < matches.length && i < 5; i++) {
+        final m = matches[i];
+        buf.write('\n  [$i] ${m.type}');
+        if (m.label != null) buf.write(' label="${m.label}"');
+        if (m.text != null) buf.write(' text="${m.text}"');
+        if (m.key != null) buf.write(' key=${m.key}');
+        buf.write(' (use index:${m.type}:$i to target this node)');
+      }
+    }
+    return buf.toString();
+  }
 }
 
-/// Resolve a selector against the current widget tree.
 ///
 /// Returns exactly one [ResolvedNode] or throws [SelectorError].
 ///
